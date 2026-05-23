@@ -1,4 +1,5 @@
 import DatePicker from "react-datepicker";
+import type { ReactDatePickerProps } from "react-datepicker";
 import {
   BarChart3,
   Check,
@@ -34,6 +35,7 @@ const tabs = [
 type Tab = (typeof tabs)[number][0];
 
 const colors = ["#047857", "#0e7490", "#d97706", "#7c3aed", "#be123c", "#475569"];
+const DatePickerField = DatePicker as unknown as React.ComponentType<ReactDatePickerProps>;
 
 export const AdminDashboard = ({ session }: { session: SessionUser }) => {
   const state = useDb();
@@ -328,10 +330,10 @@ const SettingsPanel = ({ session }: { session: SessionUser }) => {
       <h2 className="text-xl font-bold text-slate-950">Election settings</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <Field label="Start date and time">
-          <DatePicker className="input" selected={startAt} onChange={(date) => date && setStartAt(date)} showTimeSelect dateFormat="PPpp" />
+          <DatePickerField className="input" selected={startAt} onChange={(date) => date instanceof Date && setStartAt(date)} showTimeSelect dateFormat="PPpp" />
         </Field>
         <Field label="End date and time">
-          <DatePicker className="input" selected={endAt} onChange={(date) => date && setEndAt(date)} showTimeSelect dateFormat="PPpp" />
+          <DatePickerField className="input" selected={endAt} onChange={(date) => date instanceof Date && setEndAt(date)} showTimeSelect dateFormat="PPpp" />
         </Field>
       </div>
       <label className="mt-5 flex items-center justify-between rounded-xl border border-slate-200 bg-white/70 p-4">
