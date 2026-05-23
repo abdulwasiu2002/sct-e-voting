@@ -14,6 +14,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 import { FormEvent, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { EmptyState, Field } from "../components/Layout";
@@ -35,7 +36,7 @@ const tabs = [
 type Tab = (typeof tabs)[number][0];
 
 const colors = ["#047857", "#0e7490", "#d97706", "#7c3aed", "#be123c", "#475569"];
-const DatePickerField = DatePicker as unknown as React.ComponentType<DatePickerProps>;
+const DatePickerField = DatePicker as unknown as ComponentType<DatePickerProps>;
 
 export const AdminDashboard = ({ session }: { session: SessionUser }) => {
   const state = useDb();
@@ -56,6 +57,25 @@ export const AdminDashboard = ({ session }: { session: SessionUser }) => {
     name: department,
     value: approvedStudents.filter((student) => student.department === department).length,
   }));
+
+  const renderActivePanel = () => {
+    switch (activeTab) {
+      case "analytics":
+        return <AnalyticsPanel state={state} total={approvedStudents.length} voted={votedStudents} trend={trend} demographics={demographics} />;
+      case "pending":
+        return <PendingUsers state={state} session={session} />;
+      case "aspirants":
+        return <AspirantsPanel state={state} session={session} />;
+      case "candidates":
+        return <CandidatesPanel state={state} session={session} />;
+      case "settings":
+        return <SettingsPanel state={state} session={session} />;
+      case "audit":
+        return <AuditPanel state={state} />;
+      default:
+        return <EmptyState title="Unknown admin section" body="Choose a module from the admin navigation above." />;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -88,14 +108,7 @@ export const AdminDashboard = ({ session }: { session: SessionUser }) => {
           ))}
         </div>
       </div>
-      {activeTab === "analytics" ? (
-        <AnalyticsPanel state={state} total={approvedStudents.length} voted={votedStudents} trend={trend} demographics={demographics} />
-      ) : null}
-      {activeTab === "pending" ? <PendingUsers session={session} /> : null}
-      {activeTab === "aspirants" ? <AspirantsPanel session={session} /> : null}
-      {activeTab === "candidates" ? <CandidatesPanel session={session} /> : null}
-      {activeTab === "settings" ? <SettingsPanel session={session} /> : null}
-      {activeTab === "audit" ? <AuditPanel /> : null}
+      <section className="min-h-80">{renderActivePanel()}</section>
     </div>
   );
 };
@@ -167,41 +180,54 @@ const AnalyticsPanel = ({
   </div>
 );
 
-const PendingUsers = ({ session }: { session: SessionUser }) => {
-  const state = useDb();
+const PendingUsers = ({ state, session }: { state: DbState; session: SessionUser }) => {
   const pending = state.users.filter((user) => user.role === "student" && user.status === "pending");
-  if (!pending.length) return <EmptyState title="No pending users" body="New student registrations will appear here for review." />;
+  if (!pending.length) {
+    return (
+      <PanelCard title="Pending user approvals" subtitle="Student registration requests appear here after they submit the registration form.">
+        <EmptyState title="No pending users" body="New student registrations will appear here for review." />
+      </PanelCard>
+    );
+  }
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {pending.map((user) => (
-        <div key={user.id} className="glass rounded-2xl p-5">
-          <div className="flex gap-4">
-            <img src={user.idCardImage || "https://placehold.co/180x120/e2e8f0/334155?text=ID+Card"} alt={`${user.fullName} ID card`} className="h-28 w-36 rounded-lg object-cover" />
-            <div className="min-w-0">
-              <p className="font-bold text-slate-950">{user.fullName}</p>
-              <p className="text-sm text-slate-500">{user.matricNumber}</p>
-              <p className="text-sm text-slate-500">{user.department}</p>
+    <PanelCard title="Pending user approvals" subtitle={`${pending.length} student registration${pending.length === 1 ? "" : "s"} waiting for review.`}>
+      <div className="grid gap-4 md:grid-cols-2">
+        {pending.map((user) => (
+          <div key={user.id} className="rounded-2xl border border-slate-200 bg-white/80 p-5 shadow-sm">
+            <div className="flex gap-4">
+              <img src={user.idCardImage || "https://placehold.co/180x120/e2e8f0/334155?text=ID+Card"} alt={`${user.fullName} ID card`} className="h-28 w-36 rounded-lg object-cover" />
+              <div className="min-w-0">
+                <p className="font-bold text-slate-950">{user.fullName}</p>
+                <p className="text-sm text-slate-500">{user.matricNumber}</p>
+                <p className="text-sm text-slate-500">{user.department}</p>
+              </div>
+            </div>
+            <div className="mt-5 flex gap-2">
+              <button className="btn-primary flex-1" onClick={() => mockDb.updateUserStatus(user.id, "approved", session)}>
+                <Check className="h-4 w-4" /> Approve
+              </button>
+              <button className="btn-danger flex-1" onClick={() => mockDb.updateUserStatus(user.id, "rejected", session)}>
+                <X className="h-4 w-4" /> Reject
+              </button>
             </div>
           </div>
-          <div className="mt-5 flex gap-2">
-            <button className="btn-primary flex-1" onClick={() => mockDb.updateUserStatus(user.id, "approved", session)}>
-              <Check className="h-4 w-4" /> Approve
-            </button>
-            <button className="btn-danger flex-1" onClick={() => mockDb.updateUserStatus(user.id, "rejected", session)}>
-              <X className="h-4 w-4" /> Reject
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
+        ))}
+      </div>
+    </PanelCard>
   );
 };
 
-const AspirantsPanel = ({ session }: { session: SessionUser }) => {
-  const state = useDb();
-  if (!state.aspirants.length) return <EmptyState title="No aspirant applications" body="Aspirant registrations and payment statuses will be shown here." />;
+const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
+  if (!state.aspirants.length) {
+    return (
+      <PanelCard title="Aspirants management" subtitle="Review aspirant applications and verify payment before promotion.">
+        <EmptyState title="No aspirant applications" body="Aspirant registrations and payment statuses will be shown here." />
+      </PanelCard>
+    );
+  }
   return (
-    <div className="glass overflow-x-auto rounded-2xl p-4">
+    <PanelCard title="Aspirants management" subtitle="Verify payment status and promote qualified aspirants to active candidates.">
+    <div className="overflow-x-auto">
       <table className="w-full min-w-[900px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
           <tr>
@@ -243,11 +269,11 @@ const AspirantsPanel = ({ session }: { session: SessionUser }) => {
         </tbody>
       </table>
     </div>
+    </PanelCard>
   );
 };
 
-const CandidatesPanel = ({ session }: { session: SessionUser }) => {
-  const state = useDb();
+const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
   const blankCandidate: Candidate = { id: "", fullName: "", department: state.settings.departments[0] ?? "", positionId: state.positions[0]?.id ?? "", manifesto: "", isActive: true, createdAt: "" };
   const blankPosition: Position = { id: "", title: "", formPrice: 0, eligibleLevels: ["200", "300", "400"], maxSelections: 1, isActive: true };
   const [candidate, setCandidate] = useState<Candidate>(blankCandidate);
@@ -320,8 +346,7 @@ const CandidatesPanel = ({ session }: { session: SessionUser }) => {
   );
 };
 
-const SettingsPanel = ({ session }: { session: SessionUser }) => {
-  const state = useDb();
+const SettingsPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
   const [portalEnabled, setPortalEnabled] = useState(state.settings.portalEnabled);
   const [startAt, setStartAt] = useState(new Date(state.settings.startAt));
   const [endAt, setEndAt] = useState(new Date(state.settings.endAt));
@@ -350,10 +375,10 @@ const SettingsPanel = ({ session }: { session: SessionUser }) => {
   );
 };
 
-const AuditPanel = () => {
-  const state = useDb();
+const AuditPanel = ({ state }: { state: DbState }) => {
   return (
-    <div className="glass overflow-x-auto rounded-2xl p-4">
+    <PanelCard title="Audit trail" subtitle="Read-only record of admin and voting actions.">
+    <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
           <tr><th className="p-3">Time</th><th className="p-3">Actor</th><th className="p-3">Action</th><th className="p-3">Entity</th></tr>
@@ -370,5 +395,16 @@ const AuditPanel = () => {
         </tbody>
       </table>
     </div>
+    </PanelCard>
   );
 };
+
+const PanelCard = ({ title, subtitle, children }: { title: string; subtitle: string; children: ReactNode }) => (
+  <div className="glass rounded-2xl p-5">
+    <div className="mb-5">
+      <h2 className="text-xl font-bold text-slate-950">{title}</h2>
+      <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+    </div>
+    {children}
+  </div>
+);
