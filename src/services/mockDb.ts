@@ -185,9 +185,13 @@ export const mockDb = {
   login(identifier: string, password: string) {
     const state = read();
     const passwordHash = hashPassword(password);
+    const normalizedIdentifier = identifier.trim().toLowerCase();
     const user = state.users.find((item) => {
-      const userIdentifier = item.role === "admin" ? item.fullName.toLowerCase() : item.matricNumber?.toLowerCase();
-      return userIdentifier === identifier.trim().toLowerCase() && item.passwordHash === passwordHash;
+      const identifiers =
+        item.role === "admin"
+          ? [item.fullName, item.matricNumber, item.id, "admin"]
+          : [item.matricNumber];
+      return identifiers.some((value) => value?.toLowerCase() === normalizedIdentifier) && item.passwordHash === passwordHash;
     });
     if (!user) return { ok: false, message: "Invalid login credentials." };
     if (user.status !== "approved") return { ok: false, message: "Your registration is still awaiting approval." };
