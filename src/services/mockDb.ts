@@ -51,7 +51,7 @@ const seedState = (): DbState => {
  const admin: User = {
   id: "admin_sct",
   role: "admin",
-  fullName: "Abdul Wasiu",
+  fullName: "AbdulWasiu",
   department: "SCT",
   passwordHash: hashPassword("Wase14053@."),
   status: "approved",
