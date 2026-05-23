@@ -14,7 +14,7 @@ export const Login = ({ refreshSession }: { refreshSession: () => void }) => {
     event.preventDefault();
     const result = mockDb.login(identifier, password);
     if (!result.ok || !result.user) {
-      setError(result.message);
+      setError(result.message ?? "Unable to sign in.");
       return;
     }
     refreshSession();
