@@ -6,8 +6,8 @@ import { mockDb } from "../services/mockDb";
 
 export const Login = ({ refreshSession }: { refreshSession: () => void }) => {
   const navigate = useNavigate();
-  const [identifier, setIdentifier] = useState("SCT Election Administrator");
-  const [password, setPassword] = useState("admin123");
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const submit = (event: FormEvent) => {
@@ -22,7 +22,7 @@ export const Login = ({ refreshSession }: { refreshSession: () => void }) => {
   };
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+    <div className="mx-auto grid max-w-5xl gap-8 lg:grid-cols-[0.9fr_1.1fr]">
       <div className="glass rounded-2xl p-6">
         <h1 className="text-2xl font-bold text-slate-950">Secure login</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -42,19 +42,11 @@ export const Login = ({ refreshSession }: { refreshSession: () => void }) => {
         </form>
       </div>
       <div className="rounded-2xl bg-slate-950 p-8 text-white">
-        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Demo credentials</p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="font-bold">Admin</p>
-            <p className="mt-2 text-sm text-slate-300">SCT Election Administrator</p>
-            <p className="text-sm text-slate-300">admin123</p>
-          </div>
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <p className="font-bold">Student</p>
-            <p className="mt-2 text-sm text-slate-300">SCT/OTM/20/087</p>
-            <p className="text-sm text-slate-300">password</p>
-          </div>
-        </div>
+        <p className="text-sm font-semibold uppercase tracking-wide text-emerald-300">Live election mode</p>
+        <h2 className="mt-4 text-3xl font-black">Private SCT access only</h2>
+        <p className="mt-4 max-w-xl text-sm leading-7 text-slate-300">
+          Use your approved matric number or administrator identity to continue. Passwords and account credentials are never displayed on this portal.
+        </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link className="btn-secondary border-white/20 bg-white/10 text-white hover:bg-white/15" to="/register">
             Student registration
