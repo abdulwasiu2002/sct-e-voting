@@ -24,7 +24,8 @@ export const cloudState = {
   },
   subscribe(onState: (state: DbState) => void) {
     if (!isSupabaseConfigured || !supabase) return () => undefined;
-    const channel = supabase
+    const client = supabase;
+    const channel = client
       .channel("app_state_changes")
       .on(
         "postgres_changes",
@@ -37,7 +38,7 @@ export const cloudState = {
       .subscribe();
 
     return () => {
-      void supabase.removeChannel(channel);
+      void client.removeChannel(channel);
     };
   },
 };

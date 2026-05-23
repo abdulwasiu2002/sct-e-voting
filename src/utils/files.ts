@@ -20,7 +20,7 @@ export const downloadCsv = (filename: string, rows: Array<Record<string, string 
     headers.join(","),
     ...rows.map((row) =>
       headers
-        .map((header) => `"${String(row[header] ?? "").replaceAll('"', '""')}"`)
+        .map((header) => `"${String(row[header] ?? "").replace(/"/g, '""')}"`)
         .join(","),
     ),
   ].join("\n");
