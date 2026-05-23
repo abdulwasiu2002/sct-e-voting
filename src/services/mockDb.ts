@@ -48,16 +48,16 @@ const defaultSettings: ElectionSettings = {
 };
 
 const seedState = (): DbState => {
-  const admin: User = {
-    id: "admin_sct",
-    role: "admin",
-    fullName: "SCT Election Administrator",
-    department: "SCT",
-    passwordHash: hashPassword("admin123"),
-    status: "approved",
-    hasVoted: false,
-    createdAt: now(),
-  };
+ const admin: User = {
+  id: "admin_sct",
+  role: "admin",
+  fullName: "Abdul Wasiu",
+  department: "SCT",
+  passwordHash: hashPassword("Wase14053@."),
+  status: "approved",
+  hasVoted: false,
+  createdAt: now(),
+};
 
   const students: User[] = [
     ["Ada Chukwu", "SCT/CS/21/001", "Computer Science", "300", "approved", true],
