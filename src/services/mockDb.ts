@@ -310,8 +310,21 @@ export const mockDb = {
   savePosition(position: Position, actor: SessionUser | null) {
     return mutate((state) => {
       const exists = state.positions.some((item) => item.id === position.id);
-      const positions = exists ? state.positions.map((item) => (item.id === position.id ? position : item)) : [{ ...position, id: uid("pos") }, ...state.positions];
-      return log({ ...state, positions }, actor, `${exists ? "Updated" : "Added"} position ${position.title}`, "position", position.id);
+      const savedPosition = exists ? position : { ...position, id: uid("pos") };
+      const positions = exists ? state.positions.map((item) => (item.id === position.id ? savedPosition : item)) : [savedPosition, ...state.positions];
+      return log({ ...state, positions }, actor, `${exists ? "Updated" : "Added"} position ${position.title}`, "position", savedPosition.id);
+    });
+  },
+  deletePosition(positionId: string, actor: SessionUser | null) {
+    return mutate((state) => {
+      const position = state.positions.find((item) => item.id === positionId);
+      const next = {
+        ...state,
+        positions: state.positions.filter((item) => item.id !== positionId),
+        candidates: state.candidates.filter((item) => item.positionId !== positionId),
+        aspirants: state.aspirants.map((item) => (item.positionId === positionId ? { ...item, positionId: "" } : item)),
+      };
+      return log(next, actor, `Deleted position ${position?.title ?? positionId}`, "position", positionId);
     });
   },
   updateSettings(settings: ElectionSettings, actor: SessionUser | null) {

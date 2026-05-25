@@ -308,6 +308,14 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
     setPosition(blankPosition);
   };
 
+  const deletePosition = (positionId: string) => {
+    const hasLinkedCandidates = state.candidates.some((item) => item.positionId === positionId);
+    const message = hasLinkedCandidates
+      ? "Delete this position? Candidates under it will also be removed."
+      : "Delete this position?";
+    if (window.confirm(message)) mockDb.deletePosition(positionId, session);
+  };
+
   return (
     <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
       <div className="space-y-6">
@@ -330,6 +338,46 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
             <button className="btn-primary" type="submit"><Plus className="h-4 w-4" /> Save position</button>
           </div>
         </form>
+        <div className="glass overflow-x-auto rounded-2xl p-4">
+          <div className="flex items-center justify-between gap-3 px-2 pb-3">
+            <div>
+              <h2 className="text-lg font-bold">Positions</h2>
+              <p className="text-sm text-slate-500">View, edit, and delete election positions.</p>
+            </div>
+            <span className="rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-600">{state.positions.length} total</span>
+          </div>
+          {state.positions.length ? (
+            <table className="w-full min-w-[680px] text-sm">
+              <thead className="text-left text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="p-3">Title</th>
+                  <th className="p-3">Form price</th>
+                  <th className="p-3">Eligible levels</th>
+                  <th className="p-3">Candidates</th>
+                  <th className="p-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state.positions.map((item) => (
+                  <tr key={item.id} className="border-t border-slate-100">
+                    <td className="p-3 font-semibold text-slate-900">{item.title}</td>
+                    <td className="p-3">NGN {item.formPrice.toLocaleString()}</td>
+                    <td className="p-3">{item.eligibleLevels.join(", ") || "All levels"}</td>
+                    <td className="p-3">{state.candidates.filter((candidateItem) => candidateItem.positionId === item.id).length}</td>
+                    <td className="p-3 text-right">
+                      <button className="btn-secondary mr-2 px-3" onClick={() => setPosition(item)}>Edit</button>
+                      <button className="btn-danger px-3" onClick={() => deletePosition(item.id)} aria-label={`Delete ${item.title}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <EmptyState title="No positions yet" body="Add an election position using the form above." />
+          )}
+        </div>
       </div>
       <div className="space-y-6">
         <div className="glass rounded-2xl p-5">
