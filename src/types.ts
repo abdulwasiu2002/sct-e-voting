@@ -24,8 +24,11 @@ export interface Aspirant {
   level: string;
   passwordHash: string;
   positionId: string;
+  gpa: number;
   manifesto: string;
   passportImage?: string;
+  resultFile?: string;
+  idCardImage?: string;
   paymentStatus: PaymentStatus;
   status: ApprovalStatus;
   createdAt: string;

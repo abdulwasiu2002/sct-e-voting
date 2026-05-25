@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { Field } from "../components/Layout";
 import { useDb } from "../hooks/useDb";
 import { mockDb } from "../services/mockDb";
-import { readImageAsDataUrl } from "../utils/files";
+import { readFileAsDataUrl, readImageAsDataUrl } from "../utils/files";
 
 export const RegisterAspirant = () => {
   const state = useDb();
@@ -19,15 +19,20 @@ export const RegisterAspirant = () => {
     const form = new FormData(event.currentTarget);
     try {
       const passportImage = await readImageAsDataUrl(form.get("passport") as File);
+      const resultFile = await readFileAsDataUrl(form.get("resultFile") as File, { accept: ["image/*", "application/pdf"], label: "result file" });
+      const idCardImage = await readImageAsDataUrl(form.get("idCard") as File);
       mockDb.registerAspirant({
         fullName: String(form.get("fullName")),
         matricNumber: String(form.get("matricNumber")),
         department: String(form.get("department")),
         level: String(form.get("level")),
+        gpa: Number(form.get("gpa")),
         password: String(form.get("password")),
         positionId: String(form.get("positionId")),
         manifesto: String(form.get("manifesto")),
         passportImage,
+        resultFile,
+        idCardImage,
       });
       setDone(true);
       event.currentTarget.reset();
@@ -91,10 +96,25 @@ export const RegisterAspirant = () => {
           <Field label="Password">
             <input name="password" type="password" minLength={6} className="input" required />
           </Field>
+          <Field label="GPA">
+            <input name="gpa" type="number" min="0" max="5" step="0.01" className="input" placeholder="e.g. 3.75" required />
+          </Field>
           <Field label="Passport photograph">
             <span className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white/80 px-3 py-2.5 text-sm text-slate-600">
               <Upload className="h-4 w-4" />
               <input name="passport" type="file" accept="image/*" className="min-w-0 text-xs" required />
+            </span>
+          </Field>
+          <Field label="Result upload">
+            <span className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white/80 px-3 py-2.5 text-sm text-slate-600">
+              <Upload className="h-4 w-4" />
+              <input name="resultFile" type="file" accept="image/*,application/pdf" className="min-w-0 text-xs" required />
+            </span>
+          </Field>
+          <Field label="ID card upload">
+            <span className="flex items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white/80 px-3 py-2.5 text-sm text-slate-600">
+              <Upload className="h-4 w-4" />
+              <input name="idCard" type="file" accept="image/*" className="min-w-0 text-xs" required />
             </span>
           </Field>
           <Field label="Manifesto">

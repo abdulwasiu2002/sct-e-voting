@@ -228,11 +228,13 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
   return (
     <PanelCard title="Aspirants management" subtitle="Verify payment status and promote qualified aspirants to active candidates.">
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[900px] text-left text-sm">
+      <table className="w-full min-w-[1100px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
           <tr>
             <th className="p-3">Aspirant</th>
             <th className="p-3">Position</th>
+            <th className="p-3">GPA</th>
+            <th className="p-3">Documents</th>
             <th className="p-3">Payment</th>
             <th className="p-3">Status</th>
             <th className="p-3">Actions</th>
@@ -251,6 +253,13 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
                 </div>
               </td>
               <td className="p-3">{state.positions.find((position) => position.id === aspirant.positionId)?.title}</td>
+              <td className="p-3 font-semibold text-slate-900">{Number.isFinite(aspirant.gpa) ? aspirant.gpa.toFixed(2) : "Not set"}</td>
+              <td className="p-3">
+                <div className="flex flex-wrap gap-2">
+                  <DocumentLink href={aspirant.resultFile} label="Result" />
+                  <DocumentLink href={aspirant.idCardImage} label="ID Card" />
+                </div>
+              </td>
               <td className="p-3">
                 <select className="input" value={aspirant.paymentStatus} onChange={(event) => mockDb.updateAspirant(aspirant.id, { paymentStatus: event.target.value as typeof aspirant.paymentStatus }, session)}>
                   <option value="pending">Pending</option>
@@ -408,3 +417,13 @@ const PanelCard = ({ title, subtitle, children }: { title: string; subtitle: str
     {children}
   </div>
 );
+
+const DocumentLink = ({ href, label }: { href?: string; label: string }) => {
+  if (!href) return <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">{label}: Missing</span>;
+
+  return (
+    <a className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700" href={href} target="_blank" rel="noreferrer">
+      View {label}
+    </a>
+  );
+};

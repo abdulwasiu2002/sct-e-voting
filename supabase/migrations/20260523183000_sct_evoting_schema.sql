@@ -38,8 +38,11 @@ create table if not exists public.aspirants (
   level text not null,
   password_hash text not null,
   position_id uuid references public.positions(id) on delete set null,
+  gpa numeric(3,2),
   manifesto text not null,
   passport_image text,
+  result_file text,
+  id_card_image text,
   payment_status text not null default 'pending' check (payment_status in ('pending', 'verified', 'rejected')),
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
   created_at timestamptz not null default now()
