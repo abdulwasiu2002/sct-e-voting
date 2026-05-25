@@ -18,7 +18,12 @@ export const Login = ({ refreshSession }: { refreshSession: () => void }) => {
       return;
     }
     refreshSession();
-    navigate(result.user.role === "admin" ? "/admin" : "/dashboard");
+    const routeByRole = {
+      admin: "/admin",
+      student: "/dashboard",
+      aspirant: "/aspirant",
+    } as const;
+    navigate(routeByRole[result.user.role]);
   };
 
   return (

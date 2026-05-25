@@ -46,6 +46,9 @@ const defaultSettings: ElectionSettings = {
   endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   departments: defaultDepartments,
   levels: defaultLevels,
+  paymentBankName: "",
+  paymentAccountName: "",
+  paymentAccountNumber: "",
   updatedAt: now(),
 };
 
@@ -206,7 +209,15 @@ export const mockDb = {
           : [item.matricNumber];
       return identifiers.some((value) => value?.toLowerCase() === normalizedIdentifier) && item.passwordHash === passwordHash;
     });
-    if (!user) return { ok: false, message: "Invalid login credentials." };
+    if (!user) {
+      const aspirant = state.aspirants.find((item) => item.matricNumber.toLowerCase() === normalizedIdentifier && item.passwordHash === passwordHash);
+      if (!aspirant) return { ok: false, message: "Invalid login credentials." };
+      if (aspirant.status !== "approved") return { ok: false, message: "Your aspirant application is still awaiting admin approval." };
+      const session: SessionUser = { id: aspirant.id, role: "aspirant", fullName: aspirant.fullName, department: aspirant.department };
+      mockDb.setSession(session);
+      mutate((current) => log(current, session, "Logged in as aspirant", "auth", aspirant.id));
+      return { ok: true, user: session };
+    }
     if (user.status !== "approved") return { ok: false, message: "Your registration is still awaiting approval." };
     const session: SessionUser = { id: user.id, role: user.role, fullName: user.fullName, department: user.department };
     mockDb.setSession(session);
@@ -249,6 +260,8 @@ export const mockDb = {
         passportImage: input.passportImage,
         resultFile: input.resultFile,
         idCardImage: input.idCardImage,
+        paymentReceipt: input.paymentReceipt,
+        paymentSubmittedAt: input.paymentSubmittedAt,
         paymentStatus: "pending",
         status: "pending",
         createdAt: now(),
@@ -268,6 +281,18 @@ export const mockDb = {
       const aspirant = state.aspirants.find((item) => item.id === aspirantId);
       const next = { ...state, aspirants: state.aspirants.map((item) => (item.id === aspirantId ? { ...item, ...patch } : item)) };
       return log(next, actor, `Updated aspirant ${aspirant?.fullName ?? aspirantId}`, "aspirant", aspirantId);
+    });
+  },
+  submitAspirantPayment(aspirantId: string, receipt: string) {
+    return mutate((state) => {
+      const aspirant = state.aspirants.find((item) => item.id === aspirantId);
+      const next = {
+        ...state,
+        aspirants: state.aspirants.map((item) =>
+          item.id === aspirantId ? { ...item, paymentReceipt: receipt, paymentSubmittedAt: now(), paymentStatus: "pending" as const } : item,
+        ),
+      };
+      return log(next, { id: aspirantId, role: "aspirant", fullName: aspirant?.fullName ?? "Aspirant", department: aspirant?.department ?? "" }, `Payment receipt submitted by ${aspirant?.fullName ?? aspirantId}`, "aspirant", aspirantId);
     });
   },
   promoteAspirant(aspirantId: string, actor: SessionUser | null) {

@@ -29,6 +29,8 @@ export interface Aspirant {
   passportImage?: string;
   resultFile?: string;
   idCardImage?: string;
+  paymentReceipt?: string;
+  paymentSubmittedAt?: string;
   paymentStatus: PaymentStatus;
   status: ApprovalStatus;
   createdAt: string;
@@ -82,6 +84,9 @@ export interface ElectionSettings {
   endAt: string;
   departments: string[];
   levels: string[];
+  paymentBankName: string;
+  paymentAccountName: string;
+  paymentAccountNumber: string;
   updatedAt: string;
 }
 

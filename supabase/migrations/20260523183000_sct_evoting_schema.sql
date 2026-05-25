@@ -43,6 +43,8 @@ create table if not exists public.aspirants (
   passport_image text,
   result_file text,
   id_card_image text,
+  payment_receipt text,
+  payment_submitted_at timestamptz,
   payment_status text not null default 'pending' check (payment_status in ('pending', 'verified', 'rejected')),
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
   created_at timestamptz not null default now()
@@ -89,6 +91,9 @@ create table if not exists public.election_settings (
   end_at timestamptz not null,
   departments text[] not null default '{}',
   levels text[] not null default '{}',
+  payment_bank_name text not null default '',
+  payment_account_name text not null default '',
+  payment_account_number text not null default '',
   updated_at timestamptz not null default now(),
   constraint singleton_settings check (id)
 );

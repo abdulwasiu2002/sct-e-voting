@@ -51,7 +51,10 @@ export const Shell = ({ session }: { session: SessionUser | null }) => {
 
 export const ProtectedRoute = ({ session, role }: { session: SessionUser | null; role: Role }) => {
   if (!session) return <Navigate to="/login" replace />;
-  if (session.role !== role) return <Navigate to={session.role === "admin" ? "/admin" : "/dashboard"} replace />;
+  if (session.role !== role) {
+    const target = session.role === "admin" ? "/admin" : session.role === "aspirant" ? "/aspirant" : "/dashboard";
+    return <Navigate to={target} replace />;
+  }
   return <Outlet />;
 };
 

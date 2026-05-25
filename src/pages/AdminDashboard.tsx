@@ -264,6 +264,7 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
                 <div className="flex flex-wrap gap-2">
                   <DocumentLink href={aspirant.resultFile} label="Result" />
                   <DocumentLink href={aspirant.idCardImage} label="ID Card" />
+                  <DocumentLink href={aspirant.paymentReceipt} label="Receipt" />
                 </div>
               </td>
               <td className="p-3">
@@ -275,9 +276,20 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
               </td>
               <td className="p-3 capitalize">{aspirant.status}</td>
               <td className="p-3">
-                <button className="btn-primary" disabled={aspirant.paymentStatus !== "verified" || aspirant.status === "approved"} onClick={() => mockDb.promoteAspirant(aspirant.id, session)}>
-                  Promote
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {aspirant.status === "pending" ? (
+                    <>
+                      <button className="btn-primary px-3" onClick={() => mockDb.updateAspirant(aspirant.id, { status: "approved" }, session)}>Approve</button>
+                      <button className="btn-danger px-3" onClick={() => mockDb.updateAspirant(aspirant.id, { status: "rejected" }, session)}>Reject</button>
+                    </>
+                  ) : null}
+                  <button className="btn-secondary px-3" disabled={!aspirant.paymentReceipt} onClick={() => mockDb.updateAspirant(aspirant.id, { paymentStatus: "verified" }, session)}>
+                    Verify payment
+                  </button>
+                  <button className="btn-primary px-3" disabled={aspirant.paymentStatus !== "verified" || state.candidates.some((candidate) => candidate.aspirantId === aspirant.id)} onClick={() => mockDb.promoteAspirant(aspirant.id, session)}>
+                    Promote
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
@@ -295,6 +307,9 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
   const [position, setPosition] = useState<Position>(blankPosition);
   const [departments, setDepartments] = useState(state.settings.departments.join(", "));
   const [levels, setLevels] = useState((state.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"]).join(", "));
+  const [paymentBankName, setPaymentBankName] = useState(state.settings.paymentBankName ?? "");
+  const [paymentAccountName, setPaymentAccountName] = useState(state.settings.paymentAccountName ?? "");
+  const [paymentAccountNumber, setPaymentAccountNumber] = useState(state.settings.paymentAccountNumber ?? "");
 
   const saveCandidate = (event: FormEvent) => {
     event.preventDefault();
@@ -405,6 +420,36 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
           >
             Update registration options
           </button>
+        </div>
+        <div className="glass rounded-2xl p-5">
+          <h2 className="text-lg font-bold">Aspirant payment account</h2>
+          <div className="mt-4 grid gap-3">
+            <Field label="Bank name">
+              <input className="input" value={paymentBankName} onChange={(event) => setPaymentBankName(event.target.value)} placeholder="Bank name" />
+            </Field>
+            <Field label="Account name">
+              <input className="input" value={paymentAccountName} onChange={(event) => setPaymentAccountName(event.target.value)} placeholder="SCT Election Committee" />
+            </Field>
+            <Field label="Account number">
+              <input className="input" value={paymentAccountNumber} onChange={(event) => setPaymentAccountNumber(event.target.value)} placeholder="0123456789" />
+            </Field>
+            <button
+              className="btn-secondary"
+              onClick={() =>
+                mockDb.updateSettings(
+                  {
+                    ...state.settings,
+                    paymentBankName,
+                    paymentAccountName,
+                    paymentAccountNumber,
+                  },
+                  session,
+                )
+              }
+            >
+              Save payment account
+            </button>
+          </div>
         </div>
         <div className="glass overflow-x-auto rounded-2xl p-4">
           <h2 className="px-2 pb-3 text-lg font-bold">Official candidates</h2>

@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute, Shell } from "./components/Layout";
 import { useSession } from "./hooks/useDb";
 import { AdminDashboard } from "./pages/AdminDashboard";
+import { AspirantDashboard } from "./pages/AspirantDashboard";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -26,6 +27,9 @@ export const App = () => {
           </Route>
           <Route element={<ProtectedRoute session={session} role="student" />}>
             <Route path="dashboard" element={session ? <StudentDashboard session={session} /> : null} />
+          </Route>
+          <Route element={<ProtectedRoute session={session} role="aspirant" />}>
+            <Route path="aspirant" element={session ? <AspirantDashboard session={session} /> : null} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
