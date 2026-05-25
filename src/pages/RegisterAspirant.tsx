@@ -11,6 +11,7 @@ export const RegisterAspirant = () => {
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
   const [positionId, setPositionId] = useState(state.positions[0]?.id ?? "");
+  const levels = state.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"];
   const selectedPosition = state.positions.find((position) => position.id === positionId);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
@@ -79,7 +80,7 @@ export const RegisterAspirant = () => {
           </Field>
           <Field label="Level">
             <select name="level" className="input" required>
-              {["200", "300", "400", "500"].map((level) => (
+              {levels.map((level) => (
                 <option key={level}>{level}</option>
               ))}
             </select>

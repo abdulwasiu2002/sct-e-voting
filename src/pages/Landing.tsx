@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, BookOpen, LockKeyhole, UserPlus } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpen, CheckCircle2, ShieldCheck, UserPlus, Vote } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export const Landing = () => (
@@ -27,23 +27,37 @@ export const Landing = () => (
           </Link>
         </div>
       </div>
-      <div className="relative">
-        <div className="glass rounded-2xl p-5">
-          <div className="rounded-xl bg-slate-950 p-5 text-white">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <div>
-                <p className="text-sm text-emerald-300">Election command center</p>
-                <p className="text-2xl font-bold">SCT 2026</p>
-              </div>
-              <LockKeyhole className="h-8 w-8 text-emerald-300" />
+      <div className="hero-3d-stage" aria-label="SCT secure voting illustration">
+        <div className="hero-3d-orbit">
+          <div className="hero-3d-card hero-3d-card-left">
+            <ShieldCheck className="h-5 w-5 text-emerald-300" />
+            <span>Verified ID</span>
+          </div>
+          <div className="hero-3d-card hero-3d-card-right">
+            <CheckCircle2 className="h-5 w-5 text-emerald-300" />
+            <span>One vote</span>
+          </div>
+          <div className="hero-3d-ballot">
+            <div className="hero-3d-ballot-top">
+              <span>SCT 2026</span>
+              <Vote className="h-5 w-5 text-emerald-300" />
             </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              {["Verified voters", "Aspirant screening", "One ballot per student", "PDF and CSV reports"].map((item) => (
-                <div key={item} className="rounded-lg border border-white/10 bg-white/5 p-4">
-                  <p className="text-sm font-semibold">{item}</p>
-                  <div className="mt-3 h-2 rounded-full bg-white/10">
-                    <div className="h-2 rounded-full bg-emerald-400" style={{ width: `${56 + item.length}%` }} />
-                  </div>
+            <div className="hero-3d-slot" />
+            <div className="hero-3d-paper">
+              <span />
+              <span />
+              <span />
+            </div>
+          </div>
+          <div className="hero-3d-base">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">Election command center</p>
+              <p className="mt-1 text-2xl font-black text-white">Secure SCT Ballot</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {["Live results", "Audit logs", "Aspirants", "Reports"].map((item) => (
+                <div key={item} className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm font-semibold text-white">
+                  {item}
                 </div>
               ))}
             </div>

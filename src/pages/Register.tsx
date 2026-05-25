@@ -8,6 +8,7 @@ import { useDb } from "../hooks/useDb";
 
 export const Register = () => {
   const state = useDb();
+  const levels = state.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"];
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,7 +63,7 @@ export const Register = () => {
           </Field>
           <Field label="Level">
             <select name="level" className="input" required>
-              {["100", "200", "300", "400", "500"].map((level) => (
+              {levels.map((level) => (
                 <option key={level}>{level}</option>
               ))}
             </select>

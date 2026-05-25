@@ -81,6 +81,7 @@ export interface ElectionSettings {
   startAt: string;
   endAt: string;
   departments: string[];
+  levels: string[];
   updatedAt: string;
 }
 

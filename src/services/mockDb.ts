@@ -38,12 +38,14 @@ const defaultPositions: Position[] = [
 ];
 
 const defaultDepartments = ["Computer Science", "Mass Communication", "Library & Information Science", "Office Technology", "Statistics"];
+const defaultLevels = ["100", "200", "300", "400", "500"];
 
 const defaultSettings: ElectionSettings = {
   portalEnabled: true,
   startAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
   endAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   departments: defaultDepartments,
+  levels: defaultLevels,
   updatedAt: now(),
 };
 
@@ -120,7 +122,18 @@ const read = (): DbState => {
     localStorage.setItem(DB_KEY, JSON.stringify(seeded));
     return seeded;
   }
-  return JSON.parse(raw) as DbState;
+  const parsed = JSON.parse(raw) as DbState;
+  const normalized: DbState = {
+    ...parsed,
+    settings: {
+      ...defaultSettings,
+      ...parsed.settings,
+      departments: parsed.settings?.departments?.length ? parsed.settings.departments : defaultDepartments,
+      levels: parsed.settings?.levels?.length ? parsed.settings.levels : defaultLevels,
+    },
+  };
+  if (!parsed.settings?.levels?.length) localStorage.setItem(DB_KEY, JSON.stringify(normalized));
+  return normalized;
 };
 
 const write = (state: DbState) => {

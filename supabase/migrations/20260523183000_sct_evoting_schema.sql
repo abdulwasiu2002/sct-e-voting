@@ -88,6 +88,7 @@ create table if not exists public.election_settings (
   start_at timestamptz not null,
   end_at timestamptz not null,
   departments text[] not null default '{}',
+  levels text[] not null default '{}',
   updated_at timestamptz not null default now(),
   constraint singleton_settings check (id)
 );

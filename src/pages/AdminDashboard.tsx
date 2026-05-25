@@ -1,5 +1,4 @@
 import DatePicker from "react-datepicker";
-import type { DatePickerProps } from "react-datepicker";
 import {
   BarChart3,
   Check,
@@ -34,9 +33,16 @@ const tabs = [
 ] as const;
 
 type Tab = (typeof tabs)[number][0];
+type DatePickerFieldProps = {
+  className?: string;
+  selected: Date;
+  onChange: (date: Date | null) => void;
+  showTimeSelect?: boolean;
+  dateFormat?: string;
+};
 
 const colors = ["#047857", "#0e7490", "#d97706", "#7c3aed", "#be123c", "#475569"];
-const DatePickerField = DatePicker as unknown as ComponentType<DatePickerProps>;
+const DatePickerField = DatePicker as unknown as ComponentType<DatePickerFieldProps>;
 
 export const AdminDashboard = ({ session }: { session: SessionUser }) => {
   const state = useDb();
@@ -288,6 +294,7 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
   const [candidate, setCandidate] = useState<Candidate>(blankCandidate);
   const [position, setPosition] = useState<Position>(blankPosition);
   const [departments, setDepartments] = useState(state.settings.departments.join(", "));
+  const [levels, setLevels] = useState((state.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"]).join(", "));
 
   const saveCandidate = (event: FormEvent) => {
     event.preventDefault();
@@ -326,11 +333,30 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
       </div>
       <div className="space-y-6">
         <div className="glass rounded-2xl p-5">
-          <h2 className="text-lg font-bold">Valid departments</h2>
+          <h2 className="text-lg font-bold">Registration options</h2>
           <Field label="Departments" hint="Separate departments with commas.">
             <textarea className="input min-h-20" value={departments} onChange={(event) => setDepartments(event.target.value)} />
           </Field>
-          <button className="btn-secondary mt-3" onClick={() => mockDb.updateSettings({ ...state.settings, departments: departments.split(",").map((item) => item.trim()).filter(Boolean) }, session)}>Update departments</button>
+          <div className="mt-4">
+            <Field label="Levels" hint="Separate levels with commas. These appear on student and aspirant registration pages.">
+              <input className="input" value={levels} onChange={(event) => setLevels(event.target.value)} placeholder="100, 200, 300, 400, 500" />
+            </Field>
+          </div>
+          <button
+            className="btn-secondary mt-3"
+            onClick={() =>
+              mockDb.updateSettings(
+                {
+                  ...state.settings,
+                  departments: departments.split(",").map((item) => item.trim()).filter(Boolean),
+                  levels: levels.split(",").map((item) => item.trim()).filter(Boolean),
+                },
+                session,
+              )
+            }
+          >
+            Update registration options
+          </button>
         </div>
         <div className="glass overflow-x-auto rounded-2xl p-4">
           <h2 className="px-2 pb-3 text-lg font-bold">Official candidates</h2>
