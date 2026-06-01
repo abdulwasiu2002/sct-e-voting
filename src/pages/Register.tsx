@@ -15,7 +15,8 @@ export const Register = () => {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const idCardImage = await readImageAsDataUrl(form.get("idCard") as File);
       mockDb.registerStudent({
@@ -27,7 +28,7 @@ export const Register = () => {
         idCardImage,
       });
       setDone(true);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
     }

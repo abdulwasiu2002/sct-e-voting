@@ -6,6 +6,14 @@ create table if not exists public.app_state (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists public.app_records (
+  id text primary key,
+  kind text not null,
+  matric_number text,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
   role text not null check (role in ('admin', 'student', 'aspirant')),
@@ -47,6 +55,7 @@ create table if not exists public.aspirants (
   payment_submitted_at timestamptz,
   payment_status text not null default 'pending' check (payment_status in ('pending', 'verified', 'rejected')),
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  has_voted boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -99,6 +108,7 @@ create table if not exists public.election_settings (
 );
 
 alter table public.app_state enable row level security;
+alter table public.app_records enable row level security;
 alter table public.users enable row level security;
 alter table public.positions enable row level security;
 alter table public.aspirants enable row level security;
@@ -109,6 +119,8 @@ alter table public.election_settings enable row level security;
 
 drop policy if exists "Allow app state reads" on public.app_state;
 drop policy if exists "Allow app state writes" on public.app_state;
+drop policy if exists "Allow app records reads" on public.app_records;
+drop policy if exists "Allow app records writes" on public.app_records;
 
 create policy "Allow app state reads"
 on public.app_state
@@ -118,6 +130,19 @@ using (true);
 
 create policy "Allow app state writes"
 on public.app_state
+for all
+to anon, authenticated
+using (true)
+with check (true);
+
+create policy "Allow app records reads"
+on public.app_records
+for select
+to anon, authenticated
+using (true);
+
+create policy "Allow app records writes"
+on public.app_records
 for all
 to anon, authenticated
 using (true)

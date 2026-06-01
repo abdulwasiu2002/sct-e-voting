@@ -26,7 +26,7 @@ import { turnoutPercent, voteCountForCandidate } from "../utils/election";
 const tabs = [
   ["analytics", "Analytics", BarChart3],
   ["pending", "Pending Users", UserCheck],
-  ["aspirants", "Aspirants", ShieldCheck],
+  ["aspirants", "Aspirant Verification", ShieldCheck],
   ["candidates", "Candidates", Users],
   ["settings", "Settings", Settings],
   ["audit", "Audit Trail", ListChecks],
@@ -224,15 +224,17 @@ const PendingUsers = ({ state, session }: { state: DbState; session: SessionUser
 };
 
 const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
+  const [preview, setPreview] = useState<{ href: string; label: string } | null>(null);
+
   if (!state.aspirants.length) {
     return (
-      <PanelCard title="Aspirants management" subtitle="Review aspirant applications and verify payment before promotion.">
-        <EmptyState title="No aspirant applications" body="Aspirant registrations and payment statuses will be shown here." />
+      <PanelCard title="Aspirant verification" subtitle="Review aspirant applications and verify payment before promotion.">
+        <EmptyState title="No aspirants waiting for verification" body="New aspirant registrations and payment receipts will appear here." />
       </PanelCard>
     );
   }
   return (
-    <PanelCard title="Aspirants management" subtitle="Verify payment status and promote qualified aspirants to active candidates.">
+    <PanelCard title="Aspirant verification" subtitle="Approve aspirants, view documents, verify payment, and promote them to active candidates.">
     <div className="overflow-x-auto">
       <table className="w-full min-w-[1100px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
@@ -262,9 +264,9 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
               <td className="p-3 font-semibold text-slate-900">{Number.isFinite(aspirant.gpa) ? aspirant.gpa.toFixed(2) : "Not set"}</td>
               <td className="p-3">
                 <div className="flex flex-wrap gap-2">
-                  <DocumentLink href={aspirant.resultFile} label="Result" />
-                  <DocumentLink href={aspirant.idCardImage} label="ID Card" />
-                  <DocumentLink href={aspirant.paymentReceipt} label="Receipt" />
+                  <DocumentLink href={aspirant.resultFile} label="Result" onPreview={setPreview} />
+                  <DocumentLink href={aspirant.idCardImage} label="ID Card" onPreview={setPreview} />
+                  <DocumentLink href={aspirant.paymentReceipt} label="Receipt" onPreview={setPreview} />
                 </div>
               </td>
               <td className="p-3">
@@ -283,11 +285,8 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
                       <button className="btn-danger px-3" onClick={() => mockDb.updateAspirant(aspirant.id, { status: "rejected" }, session)}>Reject</button>
                     </>
                   ) : null}
-                  <button className="btn-secondary px-3" disabled={!aspirant.paymentReceipt} onClick={() => mockDb.updateAspirant(aspirant.id, { paymentStatus: "verified" }, session)}>
-                    Verify payment
-                  </button>
-                  <button className="btn-primary px-3" disabled={aspirant.paymentStatus !== "verified" || state.candidates.some((candidate) => candidate.aspirantId === aspirant.id)} onClick={() => mockDb.promoteAspirant(aspirant.id, session)}>
-                    Promote
+                  <button className="btn-primary px-3" disabled={!aspirant.paymentReceipt} onClick={() => mockDb.promoteAspirant(aspirant.id, session)}>
+                    Verify and promote
                   </button>
                 </div>
               </td>
@@ -296,6 +295,7 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
         </tbody>
       </table>
     </div>
+    {preview ? <DocumentPreview href={preview.href} label={preview.label} onClose={() => setPreview(null)} /> : null}
     </PanelCard>
   );
 };
@@ -537,12 +537,34 @@ const PanelCard = ({ title, subtitle, children }: { title: string; subtitle: str
   </div>
 );
 
-const DocumentLink = ({ href, label }: { href?: string; label: string }) => {
+const DocumentLink = ({ href, label, onPreview }: { href?: string; label: string; onPreview: (item: { href: string; label: string }) => void }) => {
   if (!href) return <span className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500">{label}: Missing</span>;
 
   return (
-    <a className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700" href={href} target="_blank" rel="noreferrer">
+    <button type="button" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-700" onClick={() => onPreview({ href, label })}>
       View {label}
-    </a>
+    </button>
+  );
+};
+
+const DocumentPreview = ({ href, label, onClose }: { href: string; label: string; onClose: () => void }) => {
+  const isPdf = href.startsWith("data:application/pdf");
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/70 p-4">
+      <div className="w-full max-w-4xl rounded-2xl bg-white p-4 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-lg font-bold text-slate-950">{label}</h3>
+          <button className="btn-secondary px-3" onClick={onClose}>Close</button>
+        </div>
+        <div className="max-h-[75vh] overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
+          {isPdf ? (
+            <iframe title={label} src={href} className="h-[70vh] w-full rounded-lg bg-white" />
+          ) : (
+            <img src={href} alt={label} className="mx-auto max-h-[70vh] rounded-lg object-contain" />
+          )}
+        </div>
+      </div>
+    </div>
   );
 };

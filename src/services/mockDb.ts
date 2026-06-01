@@ -128,6 +128,7 @@ const read = (): DbState => {
   const parsed = JSON.parse(raw) as DbState;
   const normalized: DbState = {
     ...parsed,
+    aspirants: parsed.aspirants.map((aspirant) => ({ ...aspirant, hasVoted: aspirant.hasVoted ?? false })),
     settings: {
       ...defaultSettings,
       ...parsed.settings,
@@ -226,8 +227,12 @@ export const mockDb = {
   },
   registerStudent(input: Omit<User, "id" | "role" | "passwordHash" | "status" | "hasVoted" | "createdAt"> & { password: string }) {
     return mutate((state) => {
-      if (state.users.some((user) => user.matricNumber?.toLowerCase() === input.matricNumber?.toLowerCase())) {
-        throw new Error("A student with this matric number already exists.");
+      const matricNumber = input.matricNumber?.trim().toLowerCase();
+      const existsAsUser = state.users.some((user) => user.matricNumber?.trim().toLowerCase() === matricNumber);
+      const existsAsAspirant = state.aspirants.some((aspirant) => aspirant.matricNumber.trim().toLowerCase() === matricNumber);
+      const existsAsCandidate = state.candidates.some((candidate) => candidate.matricNumber?.trim().toLowerCase() === matricNumber);
+      if (existsAsUser || existsAsAspirant || existsAsCandidate) {
+        throw new Error("A user with this matric number already exists.");
       }
       const user: User = {
         id: uid("usr"),
@@ -245,8 +250,15 @@ export const mockDb = {
       return log({ ...state, users: [user, ...state.users] }, null, `Student registration submitted for ${user.fullName}`, "user", user.id);
     });
   },
-  registerAspirant(input: Omit<Aspirant, "id" | "passwordHash" | "paymentStatus" | "status" | "createdAt"> & { password: string }) {
+  registerAspirant(input: Omit<Aspirant, "id" | "passwordHash" | "paymentStatus" | "status" | "hasVoted" | "createdAt"> & { password: string }) {
     return mutate((state) => {
+      const matricNumber = input.matricNumber.trim().toLowerCase();
+      const existsAsUser = state.users.some((user) => user.matricNumber?.trim().toLowerCase() === matricNumber);
+      const existsAsAspirant = state.aspirants.some((aspirant) => aspirant.matricNumber.trim().toLowerCase() === matricNumber);
+      const existsAsCandidate = state.candidates.some((candidate) => candidate.matricNumber?.trim().toLowerCase() === matricNumber);
+      if (existsAsUser || existsAsAspirant || existsAsCandidate) {
+        throw new Error("A user with this matric number already exists.");
+      }
       const aspirant: Aspirant = {
         id: uid("asp"),
         fullName: input.fullName,
@@ -264,6 +276,7 @@ export const mockDb = {
         paymentSubmittedAt: input.paymentSubmittedAt,
         paymentStatus: "pending",
         status: "pending",
+        hasVoted: false,
         createdAt: now(),
       };
       return log({ ...state, aspirants: [aspirant, ...state.aspirants] }, null, `Aspirant application submitted for ${aspirant.fullName}`, "aspirant", aspirant.id);
@@ -299,6 +312,10 @@ export const mockDb = {
     return mutate((state) => {
       const aspirant = state.aspirants.find((item) => item.id === aspirantId);
       if (!aspirant) return state;
+      const existingCandidate = state.candidates.find((item) => item.aspirantId === aspirant.id);
+      if (existingCandidate) {
+        return log({ ...state, aspirants: state.aspirants.filter((item) => item.id !== aspirantId) }, actor, `Removed verified aspirant ${aspirant.fullName} from verification queue`, "aspirant", aspirantId);
+      }
       const candidate: Candidate = {
         id: uid("cand"),
         aspirantId: aspirant.id,
@@ -312,10 +329,25 @@ export const mockDb = {
         isActive: true,
         createdAt: now(),
       };
+      const voterUserExists = state.users.some((user) => user.matricNumber?.trim().toLowerCase() === aspirant.matricNumber.trim().toLowerCase());
+      const voterUser: User = {
+        id: uid("usr"),
+        role: "student",
+        fullName: aspirant.fullName,
+        matricNumber: aspirant.matricNumber,
+        department: aspirant.department,
+        level: aspirant.level,
+        passwordHash: aspirant.passwordHash,
+        status: "approved",
+        idCardImage: aspirant.idCardImage,
+        hasVoted: aspirant.hasVoted,
+        createdAt: now(),
+      };
       const next = {
         ...state,
+        users: voterUserExists ? state.users : [voterUser, ...state.users],
         candidates: [candidate, ...state.candidates],
-        aspirants: state.aspirants.map((item) => (item.id === aspirantId ? { ...item, status: "approved" as const, paymentStatus: "verified" as const } : item)),
+        aspirants: state.aspirants.filter((item) => item.id !== aspirantId),
       };
       return log(next, actor, `Promoted ${aspirant.fullName} to candidate`, "candidate", candidate.id);
     });
@@ -358,7 +390,9 @@ export const mockDb = {
   castVotes(voter: SessionUser, selections: Record<string, string>) {
     return mutate((state) => {
       const user = state.users.find((item) => item.id === voter.id);
-      if (!user || user.hasVoted) throw new Error("This account has already submitted a ballot.");
+      const aspirant = state.aspirants.find((item) => item.id === voter.id);
+      if (!user && !aspirant) throw new Error("This account is not allowed to vote.");
+      if (user?.hasVoted || aspirant?.hasVoted) throw new Error("This account has already submitted a ballot.");
       const ballots: Vote[] = Object.entries(selections).map(([positionId, candidateId]) => ({
         id: uid("vote"),
         voterId: voter.id,
@@ -371,6 +405,7 @@ export const mockDb = {
         ...state,
         votes: [...ballots, ...state.votes],
         users: state.users.map((item) => (item.id === voter.id ? { ...item, hasVoted: true } : item)),
+        aspirants: state.aspirants.map((item) => (item.id === voter.id ? { ...item, hasVoted: true } : item)),
       };
       return log(next, voter, `Ballot submitted by ${voter.fullName}`, "vote", voter.id);
     });

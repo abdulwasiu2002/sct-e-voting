@@ -30,6 +30,7 @@ export const App = () => {
           </Route>
           <Route element={<ProtectedRoute session={session} role="aspirant" />}>
             <Route path="aspirant" element={session ? <AspirantDashboard session={session} /> : null} />
+            <Route path="aspirant/vote" element={session ? <StudentDashboard session={session} /> : null} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

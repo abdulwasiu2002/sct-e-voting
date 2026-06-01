@@ -17,7 +17,8 @@ export const RegisterAspirant = () => {
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const passportImage = await readImageAsDataUrl(form.get("passport") as File);
       const resultFile = await readFileAsDataUrl(form.get("resultFile") as File, { accept: ["image/*", "application/pdf"], label: "result file" });
@@ -36,7 +37,7 @@ export const RegisterAspirant = () => {
         idCardImage,
       });
       setDone(true);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Application failed.");
     }

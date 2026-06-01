@@ -1,5 +1,6 @@
 import { Download, ReceiptText, Upload, Vote } from "lucide-react";
 import { FormEvent, useState } from "react";
+import { Link } from "react-router-dom";
 import { Field } from "../components/Layout";
 import { useDb } from "../hooks/useDb";
 import { mockDb } from "../services/mockDb";
@@ -32,12 +33,13 @@ export const AspirantDashboard = ({ session }: { session: SessionUser }) => {
     event.preventDefault();
     setError("");
     setDone(false);
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const receipt = await readFileAsDataUrl(form.get("receipt") as File, { accept: ["image/*", "application/pdf"], label: "payment receipt" });
       mockDb.submitAspirantPayment(aspirant.id, receipt);
       setDone(true);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unable to submit receipt.");
     }
@@ -54,6 +56,9 @@ export const AspirantDashboard = ({ session }: { session: SessionUser }) => {
         <button className="btn-primary" onClick={() => exportAspirantFormPdf(state, aspirant)}>
           <Download className="h-4 w-4" /> Download form
         </button>
+        <Link className="btn-secondary" to="/aspirant/vote">
+          <Vote className="h-4 w-4" /> Cast vote
+        </Link>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-3">

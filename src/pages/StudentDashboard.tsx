@@ -10,6 +10,8 @@ import { isElectionActive } from "../utils/election";
 export const StudentDashboard = ({ session }: { session: SessionUser }) => {
   const state = useDb();
   const user = state.users.find((item) => item.id === session.id);
+  const aspirant = state.aspirants.find((item) => item.id === session.id);
+  const voter = user ?? aspirant;
   const [selections, setSelections] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -53,7 +55,7 @@ export const StudentDashboard = ({ session }: { session: SessionUser }) => {
     );
   }
 
-  if (user?.hasVoted || submitted) {
+  if (voter?.hasVoted || submitted) {
     return (
       <StatusScreen
         icon={<CheckCircle2 className="h-8 w-8" />}
@@ -63,8 +65,8 @@ export const StudentDashboard = ({ session }: { session: SessionUser }) => {
     );
   }
 
-  if (user?.status !== "approved") {
-    return <StatusScreen icon={<Lock className="h-8 w-8" />} title="Account not approved" body="Only approved SCT student voters can access the ballot." />;
+  if (voter?.status !== "approved") {
+    return <StatusScreen icon={<Lock className="h-8 w-8" />} title="Account not approved" body="Only approved SCT students and aspirants can access the ballot." />;
   }
 
   return (

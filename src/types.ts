@@ -33,6 +33,7 @@ export interface Aspirant {
   paymentSubmittedAt?: string;
   paymentStatus: PaymentStatus;
   status: ApprovalStatus;
+  hasVoted: boolean;
   createdAt: string;
 }
 
