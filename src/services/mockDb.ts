@@ -362,7 +362,19 @@ export const mockDb = {
     });
   },
   deleteCandidate(candidateId: string, actor: SessionUser | null) {
-    return mutate((state) => log({ ...state, candidates: state.candidates.filter((item) => item.id !== candidateId) }, actor, "Deleted candidate", "candidate", candidateId));
+    return mutate((state) =>
+      log(
+        {
+          ...state,
+          candidates: state.candidates.filter((item) => item.id !== candidateId),
+          votes: state.votes.filter((item) => item.candidateId !== candidateId),
+        },
+        actor,
+        "Deleted candidate",
+        "candidate",
+        candidateId,
+      ),
+    );
   },
   savePosition(position: Position, actor: SessionUser | null) {
     return mutate((state) => {
@@ -379,6 +391,7 @@ export const mockDb = {
         ...state,
         positions: state.positions.filter((item) => item.id !== positionId),
         candidates: state.candidates.filter((item) => item.positionId !== positionId),
+        votes: state.votes.filter((item) => item.positionId !== positionId),
         aspirants: state.aspirants.map((item) => (item.positionId === positionId ? { ...item, positionId: "" } : item)),
       };
       return log(next, actor, `Deleted position ${position?.title ?? positionId}`, "position", positionId);
@@ -386,6 +399,21 @@ export const mockDb = {
   },
   updateSettings(settings: ElectionSettings, actor: SessionUser | null) {
     return mutate((state) => log({ ...state, settings: { ...settings, updatedAt: now() } }, actor, "Changed election settings", "settings"));
+  },
+  clearAuditLogs(actor: SessionUser | null) {
+    return mutate((state) => ({
+      ...state,
+      auditLogs: [
+        {
+          id: uid("log"),
+          actorId: actor?.id ?? "system",
+          actorName: actor?.fullName ?? "System",
+          action: "Cleared audit trail",
+          entityType: "settings",
+          createdAt: now(),
+        },
+      ],
+    }));
   },
   castVotes(voter: SessionUser, selections: Record<string, string>) {
     return mutate((state) => {

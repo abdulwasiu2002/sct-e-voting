@@ -21,7 +21,7 @@ import { useDb } from "../hooks/useDb";
 import { mockDb } from "../services/mockDb";
 import type { Candidate, DbState, Position, SessionUser } from "../types";
 import { exportResultsCsv, exportResultsPdf } from "../utils/reports";
-import { turnoutPercent, voteCountForCandidate } from "../utils/election";
+import { getEligibleVoters, getTotalRegistrationCount, getVotedVoterCount, turnoutPercent, voteCountForCandidate } from "../utils/election";
 
 const tabs = [
   ["analytics", "Analytics", BarChart3],
@@ -47,8 +47,9 @@ const DatePickerField = DatePicker as unknown as ComponentType<DatePickerFieldPr
 export const AdminDashboard = ({ session }: { session: SessionUser }) => {
   const state = useDb();
   const [activeTab, setActiveTab] = useState<Tab>("analytics");
-  const approvedStudents = state.users.filter((user) => user.role === "student" && user.status === "approved");
-  const votedStudents = new Set(state.votes.map((vote) => vote.voterId)).size;
+  const eligibleVoters = getEligibleVoters(state);
+  const totalRegistrations = getTotalRegistrationCount(state);
+  const votedStudents = getVotedVoterCount(state);
 
   const trend = useMemo(() => {
     const buckets = new Map<string, number>();
@@ -61,13 +62,13 @@ export const AdminDashboard = ({ session }: { session: SessionUser }) => {
 
   const demographics = state.settings.departments.map((department) => ({
     name: department,
-    value: approvedStudents.filter((student) => student.department === department).length,
+    value: eligibleVoters.filter((student) => student.department === department).length,
   }));
 
   const renderActivePanel = () => {
     switch (activeTab) {
       case "analytics":
-        return <AnalyticsPanel state={state} total={approvedStudents.length} voted={votedStudents} trend={trend} demographics={demographics} />;
+        return <AnalyticsPanel state={state} total={totalRegistrations} eligible={eligibleVoters.length} voted={votedStudents} trend={trend} demographics={demographics} />;
       case "pending":
         return <PendingUsers state={state} session={session} />;
       case "aspirants":
@@ -77,7 +78,7 @@ export const AdminDashboard = ({ session }: { session: SessionUser }) => {
       case "settings":
         return <SettingsPanel state={state} session={session} />;
       case "audit":
-        return <AuditPanel state={state} />;
+        return <AuditPanel state={state} session={session} />;
       default:
         return <EmptyState title="Unknown admin section" body="Choose a module from the admin navigation above." />;
     }
@@ -122,22 +123,25 @@ export const AdminDashboard = ({ session }: { session: SessionUser }) => {
 const AnalyticsPanel = ({
   state,
   total,
+  eligible,
   voted,
   trend,
   demographics,
 }: {
   state: DbState;
   total: number;
+  eligible: number;
   voted: number;
   trend: Array<{ time: string; votes: number }>;
   demographics: Array<{ name: string; value: number }>;
 }) => (
   <div className="space-y-6">
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       {[
-        ["Total Registered", total, "Approved student voters"],
-        ["Votes Cast", voted, "Unique students who submitted"],
-        ["Turnout", `${turnoutPercent(state)}%`, "Based on approved voters"],
+        ["Total Registered", total, "Unique matric numbers in the system"],
+        ["Eligible Voters", eligible, "Approved students and approved aspirants"],
+        ["Votes Cast", voted, "Unique eligible voters who submitted"],
+        ["Turnout", `${turnoutPercent(state)}%`, "Based on eligible voters"],
       ].map(([label, value, hint]) => (
         <div key={label} className="glass rounded-2xl p-5">
           <p className="text-sm font-semibold text-slate-500">{label}</p>
@@ -225,8 +229,9 @@ const PendingUsers = ({ state, session }: { state: DbState; session: SessionUser
 
 const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
   const [preview, setPreview] = useState<{ href: string; label: string } | null>(null);
+  const verificationAspirants = state.aspirants.filter((aspirant) => !state.candidates.some((candidate) => candidate.aspirantId === aspirant.id));
 
-  if (!state.aspirants.length) {
+  if (!verificationAspirants.length) {
     return (
       <PanelCard title="Aspirant verification" subtitle="Review aspirant applications and verify payment before promotion.">
         <EmptyState title="No aspirants waiting for verification" body="New aspirant registrations and payment receipts will appear here." />
@@ -249,7 +254,7 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
           </tr>
         </thead>
         <tbody>
-          {state.aspirants.map((aspirant) => (
+          {verificationAspirants.map((aspirant) => (
             <tr key={aspirant.id} className="border-t border-slate-100">
               <td className="p-3">
                 <div className="flex items-center gap-3">
@@ -503,9 +508,14 @@ const SettingsPanel = ({ state, session }: { state: DbState; session: SessionUse
   );
 };
 
-const AuditPanel = ({ state }: { state: DbState }) => {
+const AuditPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
   return (
     <PanelCard title="Audit trail" subtitle="Read-only record of admin and voting actions.">
+    <div className="mb-4 flex justify-end">
+      <button className="btn-danger" onClick={() => window.confirm("Clear audit trail? This will keep one record showing it was cleared.") && mockDb.clearAuditLogs(session)}>
+        Clear audit
+      </button>
+    </div>
     <div className="overflow-x-auto">
       <table className="w-full min-w-[720px] text-left text-sm">
         <thead className="text-xs uppercase text-slate-500">
