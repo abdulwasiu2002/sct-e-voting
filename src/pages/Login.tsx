@@ -31,7 +31,7 @@ export const Login = () => {
       <div className="glass rounded-2xl p-6">
         <h1 className="text-2xl font-bold text-slate-950">Secure login</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Students sign in with matric number. Administrators sign in with their admin email.
+          Students sign in with matric number. Administrators sign in with the email or username used for the admin account.
         </p>
         <form className="mt-6 space-y-4" onSubmit={submit}>
           <Field label="Matric number or admin email">

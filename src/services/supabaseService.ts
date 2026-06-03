@@ -107,14 +107,35 @@ export const fetchProfile = async (authUserId: string): Promise<{ data: SessionU
 };
 
 const deriveAuthEmail = (identifier: string) => `${normalizeMatric(identifier).replace(/\s+/g, "")}@sct-voting.local`;
+const normalizeAuthIdentifier = (identifier: string) => identifier.trim().toLowerCase();
+
+const buildAuthEmailCandidates = (identifier: string) => {
+  const normalized = normalizeAuthIdentifier(identifier);
+  if (normalized.includes("@")) {
+    return [normalized];
+  }
+  return [deriveAuthEmail(normalized), normalized];
+};
 
 export const signIn = async (identifier: string, password: string): Promise<{ data: SessionUser | null; error: string | null }> => {
   ensureSupabase();
-  const email = identifier.includes("@") ? identifier.trim().toLowerCase() : deriveAuthEmail(identifier);
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { data: null, error: normalizeError(error) };
-  if (!data.session) return { data: null, error: "Unable to sign in." };
-  return fetchProfile(data.session.user.id);
+  const candidateEmails = buildAuthEmailCandidates(identifier);
+  let lastError: unknown = null;
+
+  for (const email of candidateEmails) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      lastError = error;
+      continue;
+    }
+    if (!data.session) {
+      lastError = "Unable to sign in.";
+      continue;
+    }
+    return fetchProfile(data.session.user.id);
+  }
+
+  return { data: null, error: normalizeError(lastError) };
 };
 
 export const signOut = async (): Promise<string | null> => {
