@@ -152,9 +152,15 @@ const buildAuthEmailCandidates = (identifier: string) => {
   return [deriveAuthEmail(normalized), normalized];
 };
 
+const LOCAL_ADMIN_SIGNIN_EVENT = "sct-voting-local-admin-signin";
+const LOCAL_ADMIN_SIGNOUT_EVENT = "sct-voting-local-admin-signout";
+
 export const signIn = async (identifier: string, password: string): Promise<{ data: SessionUser | null; error: string | null }> => {
   if (normalizeAuthIdentifier(identifier) === LOCAL_ADMIN_IDENTIFIER && password === LOCAL_ADMIN_PASSWORD) {
     saveLocalAdminSession(LOCAL_ADMIN_SESSION);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(LOCAL_ADMIN_SIGNIN_EVENT));
+    }
     return { data: LOCAL_ADMIN_SESSION, error: null };
   }
 
@@ -180,6 +186,9 @@ export const signIn = async (identifier: string, password: string): Promise<{ da
 
 export const signOut = async (): Promise<string | null> => {
   clearLocalAdminSession();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(LOCAL_ADMIN_SIGNOUT_EVENT));
+  }
   if (!isSupabaseConfigured || !supabase) return null;
   const { error } = await supabase.auth.signOut();
   return error ? normalizeError(error) : null;

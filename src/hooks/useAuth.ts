@@ -71,5 +71,24 @@ export const useAuth = () => {
     };
   }, [refreshAuth, loadProfile]);
 
+  useEffect(() => {
+    const handleLocalAdminSignIn = () => {
+      const localAdmin = getLocalAdminSession();
+      if (localAdmin) setSession(localAdmin);
+    };
+    const handleLocalAdminSignOut = () => {
+      setSession(null);
+    };
+
+    if (typeof window === "undefined") return;
+    window.addEventListener("sct-voting-local-admin-signin", handleLocalAdminSignIn);
+    window.addEventListener("sct-voting-local-admin-signout", handleLocalAdminSignOut);
+
+    return () => {
+      window.removeEventListener("sct-voting-local-admin-signin", handleLocalAdminSignIn);
+      window.removeEventListener("sct-voting-local-admin-signout", handleLocalAdminSignOut);
+    };
+  }, []);
+
   return { session, loading, error, refreshAuth };
 };
