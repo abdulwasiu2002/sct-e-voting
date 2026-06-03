@@ -2,28 +2,28 @@ import { LogIn } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Field } from "../components/Layout";
-import { mockDb } from "../services/mockDb";
+import { signIn } from "../services/supabaseService";
 
-export const Login = ({ refreshSession }: { refreshSession: () => void }) => {
+export const Login = () => {
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    const result = mockDb.login(identifier, password);
-    if (!result.ok || !result.user) {
-      setError(result.message ?? "Unable to sign in.");
+    const result = await signIn(identifier, password);
+    if (result.error || !result.data) {
+      setError(result.error ?? "Unable to sign in.");
       return;
     }
-    refreshSession();
+
     const routeByRole = {
       admin: "/admin",
       student: "/dashboard",
       aspirant: "/aspirant",
     } as const;
-    navigate(routeByRole[result.user.role]);
+    navigate(routeByRole[result.data.role]);
   };
 
   return (

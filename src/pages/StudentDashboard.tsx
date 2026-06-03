@@ -2,19 +2,27 @@ import { CheckCircle2, Clock, Lock, Send, Vote } from "lucide-react";
 import type { ReactNode } from "react";
 import { FormEvent, useMemo, useState } from "react";
 import { EmptyState } from "../components/Layout";
-import { useDb } from "../hooks/useDb";
-import { mockDb } from "../services/mockDb";
+import { useAppState } from "../hooks/useAppState";
+import { castVotes } from "../services/supabaseService";
 import type { SessionUser } from "../types";
 import { isElectionActive } from "../utils/election";
 
 export const StudentDashboard = ({ session }: { session: SessionUser }) => {
-  const state = useDb();
+  const { state, loading, error: loadError } = useAppState();
+  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  if (loading) {
+    return <div className="glass rounded-2xl p-8 text-center text-slate-700">Loading ballot...</div>;
+  }
+  if (loadError || !state) {
+    return <div className="glass rounded-2xl p-8 text-center text-rose-700">Unable to load ballot: {loadError ?? "Unknown error."}</div>;
+  }
+
   const user = state.users.find((item) => item.id === session.id);
   const aspirant = state.aspirants.find((item) => item.id === session.id);
   const voter = user ?? aspirant;
-  const [selections, setSelections] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
-  const [error, setError] = useState("");
 
   const positions = state.positions.filter((position) => position.isActive);
   const grouped = useMemo(
@@ -26,20 +34,20 @@ export const StudentDashboard = ({ session }: { session: SessionUser }) => {
     [positions, state.candidates],
   );
 
-  const submit = (event: FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
-    setError("");
+    setSubmitError("");
     const missing = grouped.filter((group) => group.candidates.length && !selections[group.position.id]);
     if (missing.length) {
-      setError("Please choose one candidate for every available position.");
+      setSubmitError("Please choose one candidate for every available position.");
       return;
     }
-    try {
-      mockDb.castVotes(session, selections);
-      setSubmitted(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to submit ballot.");
+    const result = await castVotes(session, selections);
+    if (result) {
+      setSubmitError(result);
+      return;
     }
+    setSubmitted(true);
   };
 
   if (!isElectionActive(state)) {
@@ -127,7 +135,7 @@ export const StudentDashboard = ({ session }: { session: SessionUser }) => {
             )}
           </section>
         ))}
-        {error ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p> : null}
+        {submitError ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{submitError}</p> : null}
         <button className="btn-primary w-full sm:w-auto" type="submit">
           <Send className="h-4 w-4" /> Submit ballot securely
         </button>

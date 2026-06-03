@@ -2,13 +2,13 @@ import { Upload, UserPlus } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { Field } from "../components/Layout";
-import { mockDb } from "../services/mockDb";
+import { registerStudent } from "../services/supabaseService";
 import { readImageAsDataUrl } from "../utils/files";
-import { useDb } from "../hooks/useDb";
+import { useAppState } from "../hooks/useAppState";
 
 export const Register = () => {
-  const state = useDb();
-  const levels = state.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"];
+  const { state, loading, error: loadError } = useAppState();
+  const levels = state?.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"];
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
@@ -19,7 +19,7 @@ export const Register = () => {
     const form = new FormData(formElement);
     try {
       const idCardImage = await readImageAsDataUrl(form.get("idCard") as File);
-      mockDb.registerStudent({
+      const result = await registerStudent({
         fullName: String(form.get("fullName")),
         matricNumber: String(form.get("matricNumber")),
         department: String(form.get("department")),
@@ -27,12 +27,42 @@ export const Register = () => {
         password: String(form.get("password")),
         idCardImage,
       });
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
       setDone(true);
       formElement.reset();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed.");
     }
   };
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="glass rounded-2xl p-6 sm:p-8 text-center text-slate-700">Loading registration data...</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="glass rounded-2xl p-6 sm:p-8 text-center text-rose-700">Unable to load registration options: {loadError}</div>
+      </div>
+    );
+  }
+
+  if (!state) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="glass rounded-2xl p-6 sm:p-8 text-center text-slate-700">No registration data available.</div>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-3xl">

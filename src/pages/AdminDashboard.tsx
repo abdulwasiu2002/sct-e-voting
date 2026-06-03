@@ -17,9 +17,19 @@ import type { ComponentType, ReactNode } from "react";
 import { FormEvent, useMemo, useState } from "react";
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { EmptyState, Field } from "../components/Layout";
-import { useDb } from "../hooks/useDb";
-import { mockDb } from "../services/mockDb";
-import type { Candidate, DbState, Position, SessionUser } from "../types";
+import { useAppState } from "../hooks/useAppState";
+import {
+  clearAuditLogs,
+  deleteCandidate,
+  deletePosition,
+  promoteAspirant,
+  saveCandidate as saveCandidateService,
+  savePosition as savePositionService,
+  updateAspirant,
+  updateSettings,
+  updateUserStatus,
+} from "../services/supabaseService";
+import type { Aspirant, Candidate, DbState, Position, SessionUser } from "../types";
 import { exportResultsCsv, exportResultsPdf } from "../utils/reports";
 import { getEligibleVoters, getTotalRegistrationCount, getVotedVoterCount, turnoutPercent, voteCountForCandidate } from "../utils/election";
 
@@ -45,8 +55,104 @@ const colors = ["#047857", "#0e7490", "#d97706", "#7c3aed", "#be123c", "#475569"
 const DatePickerField = DatePicker as unknown as ComponentType<DatePickerFieldProps>;
 
 export const AdminDashboard = ({ session }: { session: SessionUser }) => {
-  const state = useDb();
+  const { state, loading, error, refreshState } = useAppState();
   const [activeTab, setActiveTab] = useState<Tab>("analytics");
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const handleUpdateUserStatus = async (userId: string, status: "approved" | "rejected") => {
+    const result = await updateUserStatus(userId, status, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handleUpdateAspirant = async (aspirantId: string, patch: Partial<Aspirant>) => {
+    const result = await updateAspirant(aspirantId, patch, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handlePromoteAspirant = async (aspirantId: string) => {
+    const result = await promoteAspirant(aspirantId, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handleSaveCandidate = async (candidate: Candidate) => {
+    const result = await saveCandidateService(candidate, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handleSavePosition = async (position: Position) => {
+    const result = await savePositionService(position, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handleDeletePosition = async (positionId: string) => {
+    const hasLinkedCandidates = state?.candidates.some((item) => item.positionId === positionId) ?? false;
+    const message = hasLinkedCandidates
+      ? "Delete this position? Candidates under it will also be removed."
+      : "Delete this position?";
+    if (!window.confirm(message)) return;
+
+    const result = await deletePosition(positionId, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handleUpdateSettings = async (settings: DbState["settings"]) => {
+    const result = await updateSettings(settings, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handleDeleteCandidate = async (candidateId: string) => {
+    const result = await deleteCandidate(candidateId, session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  const handleClearAuditLogs = async () => {
+    if (!window.confirm("Clear audit trail? This will keep one record showing it was cleared.")) return;
+    const result = await clearAuditLogs(session);
+    if (result) {
+      setActionError(result);
+      return;
+    }
+    await refreshState();
+  };
+
+  if (loading) {
+    return <div className="glass rounded-2xl p-8 text-center text-slate-700">Loading admin dashboard…</div>;
+  }
+  if (error || !state) {
+    return <div className="glass rounded-2xl p-8 text-center text-rose-700">Unable to load admin data: {error ?? "Unknown error."}</div>;
+  }
   const eligibleVoters = getEligibleVoters(state);
   const totalRegistrations = getTotalRegistrationCount(state);
   const votedStudents = getVotedVoterCount(state);
@@ -70,15 +176,15 @@ export const AdminDashboard = ({ session }: { session: SessionUser }) => {
       case "analytics":
         return <AnalyticsPanel state={state} total={totalRegistrations} eligible={eligibleVoters.length} voted={votedStudents} trend={trend} demographics={demographics} />;
       case "pending":
-        return <PendingUsers state={state} session={session} />;
+        return <PendingUsers state={state} session={session} onUpdateUserStatus={handleUpdateUserStatus} />;
       case "aspirants":
-        return <AspirantsPanel state={state} session={session} />;
+        return <AspirantsPanel state={state} session={session} onUpdateAspirant={handleUpdateAspirant} onPromoteAspirant={handlePromoteAspirant} />;
       case "candidates":
-        return <CandidatesPanel state={state} session={session} />;
+        return <CandidatesPanel state={state} session={session} onSaveCandidate={handleSaveCandidate} onSavePosition={handleSavePosition} onDeletePosition={handleDeletePosition} onDeleteCandidate={handleDeleteCandidate} onUpdateSettings={handleUpdateSettings} />;
       case "settings":
-        return <SettingsPanel state={state} session={session} />;
+        return <SettingsPanel state={state} session={session} onSave={handleUpdateSettings} />;
       case "audit":
-        return <AuditPanel state={state} session={session} />;
+        return <AuditPanel state={state} session={session} onClear={handleClearAuditLogs} />;
       default:
         return <EmptyState title="Unknown admin section" body="Choose a module from the admin navigation above." />;
     }
@@ -115,6 +221,11 @@ export const AdminDashboard = ({ session }: { session: SessionUser }) => {
           ))}
         </div>
       </div>
+      {actionError ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+          {actionError}
+        </div>
+      ) : null}
       <section className="min-h-80">{renderActivePanel()}</section>
     </div>
   );
@@ -190,7 +301,7 @@ const AnalyticsPanel = ({
   </div>
 );
 
-const PendingUsers = ({ state, session }: { state: DbState; session: SessionUser }) => {
+const PendingUsers = ({ state, session, onUpdateUserStatus }: { state: DbState; session: SessionUser; onUpdateUserStatus: (userId: string, status: "approved" | "rejected") => void }) => {
   const pending = state.users.filter((user) => user.role === "student" && user.status === "pending");
   if (!pending.length) {
     return (
@@ -213,10 +324,10 @@ const PendingUsers = ({ state, session }: { state: DbState; session: SessionUser
               </div>
             </div>
             <div className="mt-5 flex gap-2">
-              <button className="btn-primary flex-1" onClick={() => mockDb.updateUserStatus(user.id, "approved", session)}>
+              <button className="btn-primary flex-1" onClick={() => void onUpdateUserStatus(user.id, "approved")}>
                 <Check className="h-4 w-4" /> Approve
               </button>
-              <button className="btn-danger flex-1" onClick={() => mockDb.updateUserStatus(user.id, "rejected", session)}>
+              <button className="btn-danger flex-1" onClick={() => void onUpdateUserStatus(user.id, "rejected") }>
                 <X className="h-4 w-4" /> Reject
               </button>
             </div>
@@ -227,7 +338,7 @@ const PendingUsers = ({ state, session }: { state: DbState; session: SessionUser
   );
 };
 
-const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
+const AspirantsPanel = ({ state, session, onUpdateAspirant, onPromoteAspirant }: { state: DbState; session: SessionUser; onUpdateAspirant: (aspirantId: string, patch: Partial<Aspirant>) => Promise<void>; onPromoteAspirant: (aspirantId: string) => Promise<void> }) => {
   const [preview, setPreview] = useState<{ href: string; label: string } | null>(null);
   const verificationAspirants = state.aspirants.filter((aspirant) => !state.candidates.some((candidate) => candidate.aspirantId === aspirant.id));
 
@@ -275,7 +386,7 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
                 </div>
               </td>
               <td className="p-3">
-                <select className="input" value={aspirant.paymentStatus} onChange={(event) => mockDb.updateAspirant(aspirant.id, { paymentStatus: event.target.value as typeof aspirant.paymentStatus }, session)}>
+                <select className="input" value={aspirant.paymentStatus} onChange={(event) => void onUpdateAspirant(aspirant.id, { paymentStatus: event.target.value as typeof aspirant.paymentStatus })}>
                   <option value="pending">Pending</option>
                   <option value="verified">Verified</option>
                   <option value="rejected">Rejected</option>
@@ -286,11 +397,11 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
                 <div className="flex flex-wrap gap-2">
                   {aspirant.status === "pending" ? (
                     <>
-                      <button className="btn-primary px-3" onClick={() => mockDb.updateAspirant(aspirant.id, { status: "approved" }, session)}>Approve</button>
-                      <button className="btn-danger px-3" onClick={() => mockDb.updateAspirant(aspirant.id, { status: "rejected" }, session)}>Reject</button>
+                      <button className="btn-primary px-3" onClick={() => void onUpdateAspirant(aspirant.id, { status: "approved" })}>Approve</button>
+                      <button className="btn-danger px-3" onClick={() => void onUpdateAspirant(aspirant.id, { status: "rejected" })}>Reject</button>
                     </>
                   ) : null}
-                  <button className="btn-primary px-3" disabled={!aspirant.paymentReceipt} onClick={() => mockDb.promoteAspirant(aspirant.id, session)}>
+                  <button className="btn-primary px-3" disabled={!aspirant.paymentReceipt} onClick={() => void onPromoteAspirant(aspirant.id)}>
                     Verify and promote
                   </button>
                 </div>
@@ -305,7 +416,7 @@ const AspirantsPanel = ({ state, session }: { state: DbState; session: SessionUs
   );
 };
 
-const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
+const CandidatesPanel = ({ state, session, onSaveCandidate, onSavePosition, onDeletePosition, onDeleteCandidate, onUpdateSettings }: { state: DbState; session: SessionUser; onSaveCandidate: (candidate: Candidate) => Promise<void>; onSavePosition: (position: Position) => Promise<void>; onDeletePosition: (positionId: string) => Promise<void>; onDeleteCandidate: (candidateId: string) => Promise<void>; onUpdateSettings: (settings: DbState["settings"]) => Promise<void> }) => {
   const blankCandidate: Candidate = { id: "", fullName: "", department: state.settings.departments[0] ?? "", positionId: state.positions[0]?.id ?? "", manifesto: "", isActive: true, createdAt: "" };
   const blankPosition: Position = { id: "", title: "", formPrice: 0, eligibleLevels: ["200", "300", "400"], maxSelections: 1, isActive: true };
   const [candidate, setCandidate] = useState<Candidate>(blankCandidate);
@@ -316,24 +427,18 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
   const [paymentAccountName, setPaymentAccountName] = useState(state.settings.paymentAccountName ?? "");
   const [paymentAccountNumber, setPaymentAccountNumber] = useState(state.settings.paymentAccountNumber ?? "");
 
-  const saveCandidate = (event: FormEvent) => {
+  const saveCandidate = async (event: FormEvent) => {
     event.preventDefault();
-    mockDb.saveCandidate(candidate, session);
-    setCandidate(blankCandidate);
+    await onSaveCandidate(candidate);
   };
 
-  const savePosition = (event: FormEvent) => {
+  const savePosition = async (event: FormEvent) => {
     event.preventDefault();
-    mockDb.savePosition(position, session);
-    setPosition(blankPosition);
+    await onSavePosition(position);
   };
 
-  const deletePosition = (positionId: string) => {
-    const hasLinkedCandidates = state.candidates.some((item) => item.positionId === positionId);
-    const message = hasLinkedCandidates
-      ? "Delete this position? Candidates under it will also be removed."
-      : "Delete this position?";
-    if (window.confirm(message)) mockDb.deletePosition(positionId, session);
+  const deletePositionHandler = async (positionId: string) => {
+    await onDeletePosition(positionId);
   };
 
   return (
@@ -386,7 +491,7 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
                     <td className="p-3">{state.candidates.filter((candidateItem) => candidateItem.positionId === item.id).length}</td>
                     <td className="p-3 text-right">
                       <button className="btn-secondary mr-2 px-3" onClick={() => setPosition(item)}>Edit</button>
-                      <button className="btn-danger px-3" onClick={() => deletePosition(item.id)} aria-label={`Delete ${item.title}`}>
+                      <button className="btn-danger px-3" onClick={() => deletePositionHandler(item.id)} aria-label={`Delete ${item.title}`}>
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </td>
@@ -413,14 +518,11 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
           <button
             className="btn-secondary mt-3"
             onClick={() =>
-              mockDb.updateSettings(
-                {
-                  ...state.settings,
-                  departments: departments.split(",").map((item) => item.trim()).filter(Boolean),
-                  levels: levels.split(",").map((item) => item.trim()).filter(Boolean),
-                },
-                session,
-              )
+              void onUpdateSettings({
+                ...state.settings,
+                departments: departments.split(",").map((item) => item.trim()).filter(Boolean),
+                levels: levels.split(",").map((item) => item.trim()).filter(Boolean),
+              })
             }
           >
             Update registration options
@@ -441,15 +543,12 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
             <button
               className="btn-secondary"
               onClick={() =>
-                mockDb.updateSettings(
-                  {
-                    ...state.settings,
-                    paymentBankName,
-                    paymentAccountName,
-                    paymentAccountNumber,
-                  },
-                  session,
-                )
+                void onUpdateSettings({
+                  ...state.settings,
+                  paymentBankName,
+                  paymentAccountName,
+                  paymentAccountNumber,
+                })
               }
             >
               Save payment account
@@ -467,7 +566,7 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
                   <td className="p-3">{voteCountForCandidate(state, item.id)} votes</td>
                   <td className="p-3 text-right">
                     <button className="btn-secondary mr-2 px-3" onClick={() => setCandidate(item)}>Edit</button>
-                    <button className="btn-danger px-3" onClick={() => mockDb.deleteCandidate(item.id, session)}><Trash2 className="h-4 w-4" /></button>
+                    <button className="btn-danger px-3" onClick={() => void onDeleteCandidate(item.id)}><Trash2 className="h-4 w-4" /></button>
                   </td>
                 </tr>
               ))}
@@ -479,7 +578,15 @@ const CandidatesPanel = ({ state, session }: { state: DbState; session: SessionU
   );
 };
 
-const SettingsPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
+const SettingsPanel = ({
+  state,
+  session,
+  onSave,
+}: {
+  state: DbState;
+  session: SessionUser;
+  onSave: (settings: DbState["settings"]) => Promise<void>;
+}) => {
   const [portalEnabled, setPortalEnabled] = useState(state.settings.portalEnabled);
   const [startAt, setStartAt] = useState(new Date(state.settings.startAt));
   const [endAt, setEndAt] = useState(new Date(state.settings.endAt));
@@ -501,18 +608,26 @@ const SettingsPanel = ({ state, session }: { state: DbState; session: SessionUse
         </span>
         <input className="h-6 w-6 accent-emerald-700" type="checkbox" checked={portalEnabled} onChange={(event) => setPortalEnabled(event.target.checked)} />
       </label>
-      <button className="btn-primary mt-5" onClick={() => mockDb.updateSettings({ ...state.settings, portalEnabled, startAt: startAt.toISOString(), endAt: endAt.toISOString() }, session)}>
+      <button className="btn-primary mt-5" onClick={() => void onSave({ ...state.settings, portalEnabled, startAt: startAt.toISOString(), endAt: endAt.toISOString() })}>
         Save settings
       </button>
     </div>
   );
 };
 
-const AuditPanel = ({ state, session }: { state: DbState; session: SessionUser }) => {
+const AuditPanel = ({
+  state,
+  session,
+  onClear,
+}: {
+  state: DbState;
+  session: SessionUser;
+  onClear: () => Promise<void>;
+}) => {
   return (
     <PanelCard title="Audit trail" subtitle="Read-only record of admin and voting actions.">
     <div className="mb-4 flex justify-end">
-      <button className="btn-danger" onClick={() => window.confirm("Clear audit trail? This will keep one record showing it was cleared.") && mockDb.clearAuditLogs(session)}>
+      <button className="btn-danger" onClick={() => void onClear()}>
         Clear audit
       </button>
     </div>

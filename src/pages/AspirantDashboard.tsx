@@ -2,18 +2,25 @@ import { Download, ReceiptText, Upload, Vote } from "lucide-react";
 import { FormEvent, useState } from "react";
 import { Link } from "react-router-dom";
 import { Field } from "../components/Layout";
-import { useDb } from "../hooks/useDb";
-import { mockDb } from "../services/mockDb";
+import { useAppState } from "../hooks/useAppState";
+import { submitAspirantPayment } from "../services/supabaseService";
 import type { SessionUser } from "../types";
 import { readFileAsDataUrl } from "../utils/files";
 import { exportAspirantFormPdf } from "../utils/reports";
 import { voteCountForCandidate } from "../utils/election";
 
 export const AspirantDashboard = ({ session }: { session: SessionUser }) => {
-  const state = useDb();
-  const aspirant = state.aspirants.find((item) => item.id === session.id);
-  const [error, setError] = useState("");
+  const { state, loading, error } = useAppState();
+  const aspirant = state?.aspirants.find((item) => item.id === session.id);
+  const [errorMessage, setErrorMessage] = useState("");
   const [done, setDone] = useState(false);
+
+  if (loading) {
+    return <div className="glass rounded-2xl p-8 text-center text-slate-700">Loading aspirant profile...</div>;
+  }
+  if (error || !state) {
+    return <div className="glass rounded-2xl p-8 text-center text-rose-700">Unable to load aspirant data: {error ?? "Unknown error."}</div>;
+  }
 
   if (!aspirant) {
     return (
@@ -31,17 +38,21 @@ export const AspirantDashboard = ({ session }: { session: SessionUser }) => {
 
   const submitReceipt = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError("");
+    setErrorMessage("");
     setDone(false);
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
     try {
       const receipt = await readFileAsDataUrl(form.get("receipt") as File, { accept: ["image/*", "application/pdf"], label: "payment receipt" });
-      mockDb.submitAspirantPayment(aspirant.id, receipt);
+      const result = await submitAspirantPayment(aspirant.id, receipt);
+      if (result) {
+        setErrorMessage(result);
+        return;
+      }
       setDone(true);
       formElement.reset();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to submit receipt.");
+      setErrorMessage(err instanceof Error ? err.message : "Unable to submit receipt.");
     }
   };
 
@@ -113,7 +124,7 @@ export const AspirantDashboard = ({ session }: { session: SessionUser }) => {
             </Field>
           </div>
           {done ? <p className="mt-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">Receipt submitted. Admin will verify it.</p> : null}
-          {error ? <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p> : null}
+          {errorMessage ? <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{errorMessage}</p> : null}
           <button className="btn-primary mt-5" type="submit" disabled={!paymentReady}>
             <Vote className="h-4 w-4" /> Submit payment receipt
           </button>

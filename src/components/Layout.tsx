@@ -1,14 +1,14 @@
 import { LogOut, ShieldCheck, Vote } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link, Navigate, Outlet, useNavigate } from "react-router-dom";
-import { mockDb } from "../services/mockDb";
+import { signOut } from "../services/supabaseService";
 import type { Role, SessionUser } from "../types";
 
 export const Shell = ({ session }: { session: SessionUser | null }) => {
   const navigate = useNavigate();
 
-  const logout = () => {
-    mockDb.setSession(null);
+  const logout = async () => {
+    await signOut();
     navigate("/login");
   };
 

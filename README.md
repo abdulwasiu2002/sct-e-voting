@@ -14,11 +14,7 @@ Modern React, TypeScript, Tailwind CSS, and Vite e-voting portal for the School 
 
 ## Demo Login
 
-- Admin identity: `SCT Election Administrator`
-- Admin password: `admin123`
-- Student matric number: `SCT/OTM/20/087`
-- Student password: `password`
-
+- 
 ## Run
 
 ```bash

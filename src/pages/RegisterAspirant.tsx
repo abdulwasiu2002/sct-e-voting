@@ -1,18 +1,48 @@
 import { BadgeDollarSign, Upload } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Field } from "../components/Layout";
-import { useDb } from "../hooks/useDb";
-import { mockDb } from "../services/mockDb";
+import { registerAspirant } from "../services/supabaseService";
+import { useAppState } from "../hooks/useAppState";
 import { readFileAsDataUrl, readImageAsDataUrl } from "../utils/files";
 
 export const RegisterAspirant = () => {
-  const state = useDb();
+  const { state, loading, error: loadError } = useAppState();
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
-  const [positionId, setPositionId] = useState(state.positions[0]?.id ?? "");
-  const levels = state.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"];
-  const selectedPosition = state.positions.find((position) => position.id === positionId);
+  const [positionId, setPositionId] = useState("");
+  const levels = state?.settings.levels?.length ? state.settings.levels : ["100", "200", "300", "400", "500"];
+  const selectedPosition = state?.positions.find((position) => position.id === positionId);
+
+  useEffect(() => {
+    if (!positionId && state?.positions?.length) {
+      setPositionId(state.positions[0].id);
+    }
+  }, [positionId, state]);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="glass rounded-2xl p-6 sm:p-8 text-center text-slate-700">Loading aspirant registration data...</div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="glass rounded-2xl p-6 sm:p-8 text-center text-rose-700">Unable to load registration options: {loadError}</div>
+      </div>
+    );
+  }
+
+  if (!state) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="glass rounded-2xl p-6 sm:p-8 text-center text-slate-700">No application data available.</div>
+      </div>
+    );
+  }
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -23,7 +53,7 @@ export const RegisterAspirant = () => {
       const passportImage = await readImageAsDataUrl(form.get("passport") as File);
       const resultFile = await readFileAsDataUrl(form.get("resultFile") as File, { accept: ["image/*", "application/pdf"], label: "result file" });
       const idCardImage = await readImageAsDataUrl(form.get("idCard") as File);
-      mockDb.registerAspirant({
+      const result = await registerAspirant({
         fullName: String(form.get("fullName")),
         matricNumber: String(form.get("matricNumber")),
         department: String(form.get("department")),
@@ -36,6 +66,11 @@ export const RegisterAspirant = () => {
         resultFile,
         idCardImage,
       });
+
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
       setDone(true);
       formElement.reset();
     } catch (err) {
