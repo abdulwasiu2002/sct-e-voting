@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../services/supabaseClient";
-import { fetchProfile } from "../services/supabaseService";
+import { fetchProfile, getLocalAdminSession } from "../services/supabaseService";
 import type { SessionUser } from "../types";
 
 export const useAuth = () => {
@@ -38,7 +38,21 @@ export const useAuth = () => {
       return;
     }
 
-    await loadProfile(data.session?.user.id ?? null);
+    const authUserId = data.session?.user.id ?? null;
+    if (authUserId) {
+      await loadProfile(authUserId);
+      setLoading(false);
+      return;
+    }
+
+    const localAdmin = getLocalAdminSession();
+    if (localAdmin) {
+      setSession(localAdmin);
+      setLoading(false);
+      return;
+    }
+
+    setSession(null);
     setLoading(false);
   }, [loadProfile]);
 

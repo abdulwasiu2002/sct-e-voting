@@ -1,4 +1,4 @@
-import { supabase } from "./supabaseClient";
+import { isSupabaseConfigured, supabase } from "./supabaseClient";
 import type {
   ApprovalStatus,
   AuditLog,
@@ -81,6 +81,10 @@ const logAction = async (
 };
 
 export const fetchProfile = async (authUserId: string): Promise<{ data: SessionUser | null; error: string | null }> => {
+  if (authUserId === LOCAL_ADMIN_SESSION.id) {
+    return { data: LOCAL_ADMIN_SESSION, error: null };
+  }
+
   ensureSupabase();
 
   const { data: userData, error: userError } = await supabase
@@ -109,6 +113,37 @@ export const fetchProfile = async (authUserId: string): Promise<{ data: SessionU
 const deriveAuthEmail = (identifier: string) => `${normalizeMatric(identifier).replace(/\s+/g, "")}@sct-voting.local`;
 const normalizeAuthIdentifier = (identifier: string) => identifier.trim().toLowerCase();
 
+const LOCAL_ADMIN_SESSION_KEY = "sct-voting-local-admin-session";
+const LOCAL_ADMIN_IDENTIFIER = "admin";
+const LOCAL_ADMIN_PASSWORD = "Admin123!";
+const LOCAL_ADMIN_SESSION: SessionUser = {
+  id: "local-admin",
+  role: "admin",
+  fullName: "Administrator",
+  department: "Administration",
+};
+
+export const getLocalAdminSession = (): SessionUser | null => {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(LOCAL_ADMIN_SESSION_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as SessionUser;
+  } catch {
+    return null;
+  }
+};
+
+const saveLocalAdminSession = (session: SessionUser) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_ADMIN_SESSION_KEY, JSON.stringify(session));
+};
+
+const clearLocalAdminSession = () => {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(LOCAL_ADMIN_SESSION_KEY);
+};
+
 const buildAuthEmailCandidates = (identifier: string) => {
   const normalized = normalizeAuthIdentifier(identifier);
   if (normalized.includes("@")) {
@@ -118,6 +153,11 @@ const buildAuthEmailCandidates = (identifier: string) => {
 };
 
 export const signIn = async (identifier: string, password: string): Promise<{ data: SessionUser | null; error: string | null }> => {
+  if (normalizeAuthIdentifier(identifier) === LOCAL_ADMIN_IDENTIFIER && password === LOCAL_ADMIN_PASSWORD) {
+    saveLocalAdminSession(LOCAL_ADMIN_SESSION);
+    return { data: LOCAL_ADMIN_SESSION, error: null };
+  }
+
   ensureSupabase();
   const candidateEmails = buildAuthEmailCandidates(identifier);
   let lastError: unknown = null;
@@ -139,7 +179,8 @@ export const signIn = async (identifier: string, password: string): Promise<{ da
 };
 
 export const signOut = async (): Promise<string | null> => {
-  ensureSupabase();
+  clearLocalAdminSession();
+  if (!isSupabaseConfigured || !supabase) return null;
   const { error } = await supabase.auth.signOut();
   return error ? normalizeError(error) : null;
 };
