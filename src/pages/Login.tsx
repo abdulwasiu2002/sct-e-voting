@@ -31,10 +31,10 @@ export const Login = () => {
       <div className="glass rounded-2xl p-6">
         <h1 className="text-2xl font-bold text-slate-950">Secure login</h1>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Students sign in with matric number. Administrators use their admin identity.
+          Students sign in with matric number. Administrators sign in with their admin email.
         </p>
         <form className="mt-6 space-y-4" onSubmit={submit}>
-          <Field label="Matric number or admin name">
+          <Field label="Matric number or admin email">
             <input className="input" value={identifier} onChange={(event) => setIdentifier(event.target.value)} required />
           </Field>
           <Field label="Password">
