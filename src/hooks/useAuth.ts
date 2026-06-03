@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "../services/supabaseClient";
+import { isSupabaseConfigured, supabase } from "../services/supabaseClient";
 import { fetchProfile, getLocalAdminSession } from "../services/supabaseService";
 import type { SessionUser } from "../types";
 
@@ -24,7 +24,14 @@ export const useAuth = () => {
   }, []);
 
   const refreshAuth = useCallback(async () => {
-    if (!supabase) {
+    if (!isSupabaseConfigured || !supabase) {
+      const localAdmin = getLocalAdminSession();
+      if (localAdmin) {
+        setSession(localAdmin);
+        setLoading(false);
+        return;
+      }
+
       setError("Supabase is not configured.");
       setLoading(false);
       return;

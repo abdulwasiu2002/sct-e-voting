@@ -9,11 +9,18 @@ export const useAppState = () => {
 
   const refreshState = useCallback(async () => {
     setLoading(true);
-    const result = await fetchAppState();
-    setState(result.data);
-    setError(result.error);
-    setLoading(false);
-    return result;
+    try {
+      const result = await fetchAppState();
+      setState(result.data);
+      setError(result.error);
+      setLoading(false);
+      return result;
+    } catch (err) {
+      setState(null);
+      setError(err instanceof Error ? err.message : String(err));
+      setLoading(false);
+      return { data: null, error: err instanceof Error ? err.message : String(err) };
+    }
   }, []);
 
   useEffect(() => {

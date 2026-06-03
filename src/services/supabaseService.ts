@@ -44,6 +44,16 @@ const defaultSettings: ElectionSettings = {
   updatedAt: new Date().toISOString(),
 };
 
+const emptyDbState: DbState = {
+  users: [],
+  aspirants: [],
+  candidates: [],
+  positions: [],
+  votes: [],
+  auditLogs: [],
+  settings: defaultSettings,
+};
+
 const normalizeError = (error: unknown) => {
   if (!error || typeof error !== "object") return "A Supabase error occurred.";
   if ("message" in error && typeof error.message === "string") return error.message;
@@ -51,7 +61,7 @@ const normalizeError = (error: unknown) => {
 };
 
 const ensureSupabase = () => {
-  if (!supabase) {
+  if (!isSupabaseConfigured || !supabase) {
     throw new Error("Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.");
   }
 };
@@ -312,7 +322,9 @@ export const fetchPositions = async (): Promise<{ data: Position[]; error: strin
 };
 
 export const fetchAppState = async (): Promise<{ data: DbState | null; error: string | null }> => {
-  ensureSupabase();
+  if (!isSupabaseConfigured || !supabase) {
+    return { data: emptyDbState, error: null };
+  }
 
   const [usersRes, aspirantsRes, candidatesRes, positionsRes, votesRes, auditLogsRes, settingsRes] = await Promise.all([
     supabase.from("users").select("*").order("created_at", { ascending: false }),
